@@ -452,3 +452,64 @@ class DatabaseService:
         
         conn.close()
         return statements
+    
+    # User preferences methods
+    @classmethod
+    def save_user_preference(cls, key: str, value: Any) -> bool:
+        """Save user preference to database"""
+        conn = None
+        try:
+            conn = cls.get_connection()
+            cursor = conn.cursor()
+            
+            # Create preferences table if it doesn't exist
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
+            
+            # Save preference as JSON
+            import json
+            value_json = json.dumps(value)
+            
+            cursor.execute('''
+            INSERT OR REPLACE INTO user_preferences (key, value, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ''', (key, value_json))
+            
+            conn.commit()
+            return True
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            print(f"Error saving user preference: {e}")
+            return False
+        finally:
+            if conn:
+                conn.close()
+    
+    @classmethod
+    def get_user_preference(cls, key: str, default_value: Any = None) -> Any:
+        """Get user preference from database"""
+        conn = None
+        try:
+            conn = cls.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT value FROM user_preferences WHERE key = ?', (key,))
+            result = cursor.fetchone()
+            
+            if result:
+                import json
+                return json.loads(result[0])
+            else:
+                return default_value
+        except Exception as e:
+            print(f"Error getting user preference: {e}")
+            return default_value
+        finally:
+            if conn:
+                conn.close()
