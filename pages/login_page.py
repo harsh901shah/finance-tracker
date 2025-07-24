@@ -1,3 +1,10 @@
+"""
+Login page module for the Finance Tracker application.
+
+This module provides the main authentication page with login and registration functionality,
+inspirational finance quotes, and a visually appealing landing page experience.
+"""
+
 import streamlit as st
 import random
 from services.auth_service import AuthService
@@ -6,11 +13,16 @@ from components.ui_components import UIComponents
 from components.auth_components import AuthComponents
 
 class LoginPage:
-    """Login page for the application"""
+    """
+    Login page for the Finance Tracker application.
+    
+    This class handles the rendering and functionality of the authentication page,
+    including login, registration, session management, and page layout.
+    """
     
     logger = LoggerService.get_logger('login_page')
     
-    # Collection of finance quotes
+    # Collection of finance quotes to display randomly
     FINANCE_QUOTES = [
         {"quote": "The stock market is filled with individuals who know the price of everything, but the value of nothing.", "author": "Philip Fisher"},
         {"quote": "The four most dangerous words in investing are: 'This time it's different.'", "author": "Sir John Templeton"},
@@ -27,10 +39,13 @@ class LoginPage:
     @classmethod
     def show(cls):
         """
-        Display the login page
+        Display the login page with authentication forms and landing page content.
+        
+        Renders the complete login page with header, hero section, authentication forms,
+        testimonials, quotes, and footer. Handles authentication state and form submissions.
         
         Returns:
-            bool: True if authenticated, False otherwise
+            bool: True if user is authenticated, False otherwise
         """
         try:
             # Store logger in session state for components to use
@@ -41,32 +56,34 @@ class LoginPage:
             
             # Check if user is already logged in
             if "user" in st.session_state and st.session_state.user:
+                # Display welcome message for logged-in users
                 st.success(f"Welcome back, {st.session_state.user['full_name']}!")
                 
+                # Logout button
                 if st.button("Logout", type="primary"):
                     cls._handle_logout()
                 
                 return True
             
-            # Apply custom CSS
+            # Apply custom CSS for styling
             cls._apply_custom_css()
             
             # Page layout
             st.markdown('<div class="landing-container">', unsafe_allow_html=True)
             
-            # Header
+            # Header with logo
             st.markdown('<header class="landing-header"><div class="logo-container"><h1 class="logo">Finance<span>Tracker</span></h1></div></header>', unsafe_allow_html=True)
             
-            # Main content
+            # Main content with two columns
             col1, col2 = st.columns([1, 1])
             
-            # Left column - Hero section
+            # Left column - Hero section with features
             with col1:
                 UIComponents.hero_section()
             
-            # Right column - Auth form
+            # Right column - Auth form (login or registration)
             with col2:
-                # Default to login view
+                # Default to login view if not set
                 if "auth_view" not in st.session_state:
                     st.session_state.auth_view = "login"
                 
@@ -116,15 +133,21 @@ class LoginPage:
             
             return False
         except Exception as e:
+            # Log and display any unexpected errors
             cls.logger.error(f"Error in login page: {str(e)}")
             st.error(f"An unexpected error occurred. Please try again later.")
             return False
     
     @classmethod
     def _handle_logout(cls):
-        """Handle logout button click"""
+        """
+        Handle logout button click.
+        
+        Invalidates the user's session token, clears session state,
+        and redirects to the login page.
+        """
         try:
-            # Logout user
+            # Logout user via AuthService
             if "user" in st.session_state and st.session_state.user and "session_token" in st.session_state.user:
                 username = st.session_state.user.get("username", "Unknown")
                 AuthService.logout(st.session_state.user["session_token"])
@@ -141,14 +164,17 @@ class LoginPage:
     @classmethod
     def verify_authentication(cls):
         """
-        Verify if user is authenticated via session token
+        Verify if user is authenticated via session token.
+        
+        Checks if the user has a valid session token and updates
+        the session state accordingly.
         
         Returns:
             bool: True if authenticated, False otherwise
         """
         try:
             if "user" in st.session_state and st.session_state.user and "session_token" in st.session_state.user:
-                # Verify session token
+                # Verify session token via AuthService
                 valid, user_data = AuthService.verify_session(st.session_state.user["session_token"])
                 
                 if valid:
@@ -172,7 +198,12 @@ class LoginPage:
     
     @staticmethod
     def _apply_custom_css():
-        """Apply custom CSS for styling"""
+        """
+        Apply custom CSS for styling the login page.
+        
+        Adds custom styles for the page layout, components, forms,
+        and responsive design.
+        """
         st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');

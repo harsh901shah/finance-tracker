@@ -1,12 +1,36 @@
+"""
+Authentication UI components for the Finance Tracker application.
+
+This module provides reusable UI components for user authentication, including
+login and registration forms, form handling, and authentication state management.
+"""
+
 import streamlit as st
 from services.auth_service import AuthService
 
 class AuthComponents:
-    """Authentication UI components"""
+    """
+    Authentication UI components for login and registration.
+    
+    This class provides reusable UI components for rendering login and registration forms,
+    handling form submissions, and managing authentication state in the application.
+    """
     
     @staticmethod
     def login_form():
-        """Render the login form"""
+        """
+        Render the login form with multiple authentication options.
+        
+        Displays a form with social login buttons, login method selection (email/phone/username),
+        input fields for credentials, and a sign-in button.
+        
+        Returns:
+            tuple: (login_button_clicked, identifier, password, login_method)
+                - login_button_clicked: Boolean indicating if the login button was clicked
+                - identifier: The entered username, email, or phone number
+                - password: The entered password
+                - login_method: The selected login method ("username", "email", or "phone")
+        """
         st.markdown('<div class="auth-form login-form auth-container">', unsafe_allow_html=True)
         st.markdown('<h2>Welcome Back</h2>', unsafe_allow_html=True)
         st.markdown('<p>Sign in to continue to your dashboard</p>', unsafe_allow_html=True)
@@ -47,7 +71,23 @@ class AuthComponents:
     
     @staticmethod
     def registration_form():
-        """Render the registration form"""
+        """
+        Render the registration form with all required fields.
+        
+        Displays a form with personal information, account credentials, contact information,
+        password fields with strength indicator, and terms & conditions checkbox.
+        
+        Returns:
+            tuple: Form data and state
+                - register_button_clicked: Boolean indicating if the register button was clicked
+                - username: The entered username
+                - password: The entered password
+                - confirm_password: The entered password confirmation
+                - email: The entered email address
+                - phone_number: The entered phone number
+                - full_name: The entered full name
+                - terms_agreed: Boolean indicating if terms were accepted
+        """
         st.markdown('<div class="auth-form register-form auth-container">', unsafe_allow_html=True)
         st.markdown('<h2>Create Your Account</h2>', unsafe_allow_html=True)
         st.markdown('<p>Join thousands of users managing their finances</p>', unsafe_allow_html=True)
@@ -78,7 +118,7 @@ class AuthComponents:
             confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm password")
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # Password requirements
+        # Password requirements and strength indicator
         if new_password:
             from components.ui_components import UIComponents
             
@@ -105,23 +145,37 @@ class AuthComponents:
     
     @staticmethod
     def handle_login(identifier, password, login_type):
-        """Handle login form submission"""
+        """
+        Handle login form submission and authentication.
+        
+        Validates the form inputs, attempts to authenticate the user via the AuthService,
+        and updates the session state upon successful login.
+        
+        Args:
+            identifier: Username, email, or phone number
+            password: User password
+            login_type: Type of login identifier used ("username", "email", or "phone")
+            
+        Returns:
+            bool: True if login was successful, False otherwise
+        """
         logger = st.session_state.get('logger')
         
         try:
+            # Validate required fields
             if not identifier or not password:
                 st.error("Please enter both identifier and password")
                 return False
             
-            # Show loading spinner
+            # Show loading spinner during authentication
             with st.spinner("Signing in..."):
-                # Attempt login
+                # Attempt login via AuthService
                 success, message, user_data = AuthService.login(identifier, password, login_type)
             
             if success:
                 st.success(message)
                 
-                # Store user data in session state
+                # Store user data in session state for persistent authentication
                 st.session_state.user = user_data
                 st.session_state.authenticated = True
                 
@@ -136,6 +190,7 @@ class AuthComponents:
                     logger.warning(f"Failed login attempt: {message}")
                 return False
         except Exception as e:
+            # Handle unexpected errors during login
             if logger:
                 logger.error(f"Error during login: {str(e)}")
             st.error("An error occurred during login. Please try again.")
@@ -143,7 +198,24 @@ class AuthComponents:
     
     @staticmethod
     def handle_registration(username, password, confirm_password, email, phone_number, full_name, terms_agreed):
-        """Handle registration form submission"""
+        """
+        Handle registration form submission and user creation.
+        
+        Validates all form inputs, checks password requirements, ensures terms are accepted,
+        and creates a new user account via the AuthService.
+        
+        Args:
+            username: Chosen username
+            password: Chosen password
+            confirm_password: Password confirmation
+            email: User's email address
+            phone_number: User's phone number
+            full_name: User's full name
+            terms_agreed: Whether user accepted terms and conditions
+            
+        Returns:
+            bool: True if registration was successful, False otherwise
+        """
         logger = st.session_state.get('logger')
         
         try:
@@ -161,9 +233,9 @@ class AuthComponents:
                 st.error("Please agree to the Terms and Conditions")
                 return False
             
-            # Show loading spinner
+            # Show loading spinner during registration
             with st.spinner("Creating your account..."):
-                # Attempt registration
+                # Attempt registration via AuthService
                 success, message = AuthService.register_user(
                     username, password, email, phone_number, full_name
                 )
@@ -180,6 +252,7 @@ class AuthComponents:
                     logger.warning(f"Failed registration attempt: {message}")
                 return False
         except Exception as e:
+            # Handle unexpected errors during registration
             if logger:
                 logger.error(f"Error during registration: {str(e)}")
             st.error("An error occurred during registration. Please try again.")

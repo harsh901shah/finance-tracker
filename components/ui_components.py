@@ -1,11 +1,28 @@
+"""
+UI components for the Finance Tracker application.
+
+This module provides reusable UI elements for the application interface,
+including hero sections, testimonials, quotes, and other visual components.
+"""
+
 import streamlit as st
 
 class UIComponents:
-    """UI components for the application"""
+    """
+    Reusable UI components for the application interface.
+    
+    This class provides static methods for rendering common UI elements
+    that can be reused across different pages of the application.
+    """
     
     @staticmethod
     def hero_section():
-        """Render the hero section with features"""
+        """
+        Render the hero section with features.
+        
+        Displays a headline, subtitle, and a grid of feature cards highlighting
+        the main capabilities of the Finance Tracker application.
+        """
         st.markdown('''
         <div class="hero-content">
             <h1>Take Control of Your Financial Future</h1>
@@ -45,7 +62,12 @@ class UIComponents:
     
     @staticmethod
     def testimonials_section():
-        """Render the testimonials section"""
+        """
+        Render the testimonials section.
+        
+        Displays a grid of user testimonials with quotes, names, and roles
+        to build trust and showcase user experiences with the application.
+        """
         testimonials = [
             {"name": "Sarah J.", "role": "Small Business Owner", "text": "Finance Tracker helped me separate personal and business expenses easily. I've saved hours on bookkeeping!"},
             {"name": "Michael T.", "role": "Software Engineer", "text": "The dashboard gives me a clear picture of my finances at a glance. I've finally started saving consistently."},
@@ -86,7 +108,16 @@ class UIComponents:
     
     @staticmethod
     def quote_section(quote, author):
-        """Render a finance quote section"""
+        """
+        Render a finance quote section.
+        
+        Displays an inspirational finance quote with attribution in a
+        visually appealing format.
+        
+        Args:
+            quote: The quote text to display
+            author: The author of the quote
+        """
         st.markdown(f'''
         <div class="quote-section">
             <div class="quote-container">
@@ -98,7 +129,12 @@ class UIComponents:
     
     @staticmethod
     def footer():
-        """Render the footer section"""
+        """
+        Render the footer section.
+        
+        Displays the application footer with logo, navigation links organized
+        by category, and copyright information.
+        """
         st.markdown('''
         <footer class="landing-footer">
             <div class="footer-content">
@@ -140,7 +176,12 @@ class UIComponents:
     
     @staticmethod
     def social_login_buttons():
-        """Render social login buttons"""
+        """
+        Render social login buttons.
+        
+        Displays buttons for authentication with Google and Apple accounts,
+        along with a divider for the email login option.
+        """
         st.markdown('''
         <div class="social-login">
             <button class="social-btn google-btn">
@@ -159,7 +200,12 @@ class UIComponents:
     
     @staticmethod
     def password_requirements():
-        """Render password requirements"""
+        """
+        Render password requirements information.
+        
+        Displays a box with password requirements to guide users
+        in creating secure passwords during registration.
+        """
         st.markdown('''
         <div class="password-requirements">
             <p>Password must:</p>
@@ -173,7 +219,15 @@ class UIComponents:
     
     @staticmethod
     def password_strength_indicator(strength):
-        """Render password strength indicator"""
+        """
+        Render password strength indicator.
+        
+        Displays a visual indicator of password strength (weak, medium, or strong)
+        with appropriate color coding.
+        
+        Args:
+            strength: Password strength level ("weak", "medium", or "strong")
+        """
         if strength == "weak":
             st.markdown('<div class="password-strength weak">Password strength: Weak</div>', unsafe_allow_html=True)
         elif strength == "medium":

@@ -1,3 +1,10 @@
+"""
+Main entry point for the Finance Tracker application.
+
+This module initializes and runs the Finance Tracker application, handling
+authentication, page navigation, and overall application flow.
+"""
+
 import streamlit as st
 import os
 import traceback
@@ -21,17 +28,28 @@ st.set_page_config(
 )
 
 class FinanceApp:
-    """Main Finance Tracker Application"""
+    """
+    Main Finance Tracker Application class.
+    
+    This class initializes the application, manages database connections,
+    handles authentication, and controls page navigation and rendering.
+    """
     
     logger = LoggerService.get_logger('finance_app')
     
     def __init__(self):
-        """Initialize the application"""
+        """
+        Initialize the Finance Tracker application.
+        
+        Sets up the database, configures logging, and initializes
+        the page navigation dictionary.
+        """
         self.logger.info("Initializing Finance Tracker Application")
         
         # Initialize database
         self._initialize_database()
         
+        # Dictionary of available pages with their handler classes/methods
         self.pages = {
             "Dashboard": DashboardPage,
             "Net Worth": NetWorthPage,
@@ -44,17 +62,24 @@ class FinanceApp:
         }
     
     def _initialize_database(self):
-        """Initialize the database"""
+        """
+        Initialize the application database.
+        
+        Creates necessary database tables and ensures the database
+        is properly configured for the application.
+        """
         try:
             # Create database tables
             DatabaseService.initialize_database()
             self.logger.info("Database initialized successfully")
         except IOError as e:
+            # Handle file permission errors
             error_msg = f"Database initialization error: {str(e)}"
             self.logger.error(error_msg)
             st.error(error_msg)
             st.info("Please check your file permissions and try again.")
         except Exception as e:
+            # Handle any other unexpected errors
             error_msg = f"Unexpected error initializing database: {str(e)}"
             self.logger.error(f"{error_msg}\n{traceback.format_exc()}")
             st.error(error_msg)
@@ -62,7 +87,12 @@ class FinanceApp:
 
     
     def run(self):
-        """Run the application"""
+        """
+        Run the Finance Tracker application.
+        
+        Handles authentication flow, page navigation, and renders
+        the appropriate page based on user selection.
+        """
         try:
             self.logger.info("Starting Finance Tracker application")
             
@@ -72,11 +102,11 @@ class FinanceApp:
             if "user" not in st.session_state:
                 st.session_state.user = None
                 
-            # Check authentication
+            # Check authentication status
             is_authenticated = LoginPage.verify_authentication()
             
             if not is_authenticated:
-                # Show login page
+                # Show login page if not authenticated
                 is_authenticated = LoginPage.show()
                 
             if is_authenticated:
@@ -91,6 +121,7 @@ class FinanceApp:
                     st.markdown("<h1>Finance Tracker</h1>", unsafe_allow_html=True)
                     st.markdown("</div>", unsafe_allow_html=True)
                     
+                    # Display user information
                     st.markdown("<div class='sidebar-user'>", unsafe_allow_html=True)
                     st.markdown(f"<p>Welcome, <strong>{st.session_state.user['full_name']}</strong></p>", unsafe_allow_html=True)
                     st.markdown("</div>", unsafe_allow_html=True)
@@ -111,6 +142,7 @@ class FinanceApp:
                     
                     selected_page = None
                     
+                    # Create navigation buttons
                     for page_name, icon in nav_items.items():
                         if st.sidebar.button(f"{icon} {page_name}", key=f"nav_{page_name}", use_container_width=True):
                             selected_page = page_name
@@ -130,6 +162,7 @@ class FinanceApp:
                     # Logout button at the bottom
                     st.markdown("<div class='sidebar-footer'>", unsafe_allow_html=True)
                     if st.button("Logout", key="logout_button", use_container_width=True):
+                        # Handle logout
                         if "user" in st.session_state and st.session_state.user and "session_token" in st.session_state.user:
                             AuthService.logout(st.session_state.user["session_token"])
                         st.session_state.user = None
@@ -147,6 +180,7 @@ class FinanceApp:
                     else:
                         self.pages[page].show()
                 except Exception as e:
+                    # Handle errors when displaying pages
                     error_msg = f"Error displaying page: {str(e)}"
                     self.logger.error(f"{error_msg}\n{traceback.format_exc()}")
                     st.error(error_msg)
@@ -157,6 +191,7 @@ class FinanceApp:
                         st.code(str(e))
                         st.code(traceback.format_exc())
         except Exception as e:
+            # Handle any unexpected application errors
             error_msg = f"Unexpected application error: {str(e)}"
             self.logger.error(f"{error_msg}\n{traceback.format_exc()}")
             st.error(error_msg)
@@ -169,7 +204,12 @@ class FinanceApp:
     
     @staticmethod
     def _apply_sidebar_css():
-        """Apply custom CSS for sidebar styling"""
+        """
+        Apply custom CSS for styling the sidebar.
+        
+        Adds styles for the sidebar layout, navigation buttons,
+        user information display, and logout button.
+        """
         st.markdown("""
         <style>
         /* Sidebar styling */
