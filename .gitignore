@@ -55,3 +55,6 @@ build/
 # Temporary files created during processing
 temp.pdf
 temp_*
+
+# Log files
+logs/
