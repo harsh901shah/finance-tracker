@@ -265,3 +265,193 @@ class AuthService:
             password_hash = cls._hash_password(password, salt)
             if password_hash != db_password_hash:
                 cls.logger.warning(f"Login attempt with invalid password for user: {username}")
+                raise InvalidCredentialsError("Invalid credentials")
+                
+            # Generate a new session token
+            session_token = cls._generate_session_token()
+            
+            # Calculate session expiry (30 days from now)
+            expires_at = (datetime.now() + timedelta(days=30)).isoformat()
+            
+            # Store session in database
+            cursor.execute('''
+            INSERT INTO sessions (user_id, session_token, expires_at)
+            VALUES (?, ?, ?)
+            ''', (user_id, session_token, expires_at))
+            
+            # Update last login timestamp
+            cursor.execute('''
+            UPDATE users SET last_login = CURRENT_TIMESTAMP
+            WHERE id = ?
+            ''', (user_id,))
+            
+            conn.commit()
+            
+            # Prepare user data to return
+            user_data = {
+                "user_id": user_id,
+                "username": username,
+                "email": email,
+                "phone_number": phone_number,
+                "full_name": full_name,
+                "session_token": session_token
+            }
+            
+            cls.logger.info(f"User logged in successfully: {username}")
+            return True, "Login successful", user_data
+            
+        except (InvalidCredentialsError, AccountDisabledError) as e:
+            return False, str(e), None
+        except sqlite3.Error as e:
+            if conn:
+                conn.rollback()
+            cls.logger.error(f"Database error during login: {str(e)}")
+            return False, f"Login failed: Database error", None
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            cls.logger.error(f"Unexpected error during login: {str(e)}")
+            return False, "Login failed: An unexpected error occurred", None
+        finally:
+            if conn:
+                conn.close()
+    
+    @classmethod
+    def verify_session(cls, session_token: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """
+        Verify if a session token is valid and not expired.
+        
+        Args:
+            session_token: The session token to verify
+            
+        Returns:
+            Tuple of (valid, user_data) where:
+            - valid: Boolean indicating if the session is valid
+            - user_data: Dictionary with user information (if valid)
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(cls.DB_FILE)
+            cursor = conn.cursor()
+            
+            # Get session data
+            cursor.execute('''
+            SELECT s.user_id, s.expires_at, u.username, u.email, u.phone_number, u.full_name, u.is_active
+            FROM sessions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.session_token = ?
+            ''', (session_token,))
+            
+            session = cursor.fetchone()
+            if not session:
+                cls.logger.warning(f"Session verification failed: Session token not found")
+                return False, None
+                
+            user_id, expires_at, username, email, phone_number, full_name, is_active = session
+            
+            # Check if session is expired
+            if datetime.fromisoformat(expires_at) < datetime.now():
+                cls.logger.warning(f"Session verification failed: Expired session for user {username}")
+                return False, None
+                
+            # Check if user account is still active
+            if not is_active:
+                cls.logger.warning(f"Session verification failed: Disabled account for user {username}")
+                return False, None
+                
+            # Prepare user data to return
+            user_data = {
+                "user_id": user_id,
+                "username": username,
+                "email": email,
+                "phone_number": phone_number,
+                "full_name": full_name,
+                "session_token": session_token
+            }
+            
+            return True, user_data
+            
+        except Exception as e:
+            cls.logger.error(f"Error during session verification: {str(e)}")
+            return False, None
+        finally:
+            if conn:
+                conn.close()
+    
+    @classmethod
+    def logout(cls, session_token: str) -> bool:
+        """
+        Invalidate a user's session token.
+        
+        Args:
+            session_token: The session token to invalidate
+            
+        Returns:
+            bool: True if logout was successful, False otherwise
+        """
+        conn = None
+        try:
+            conn = sqlite3.connect(cls.DB_FILE)
+            cursor = conn.cursor()
+            
+            # Delete the session
+            cursor.execute("DELETE FROM sessions WHERE session_token = ?", (session_token,))
+            conn.commit()
+            
+            cls.logger.info(f"User logged out successfully")
+            return True
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            cls.logger.error(f"Error during logout: {str(e)}")
+            return False
+        finally:
+            if conn:
+                conn.close()
+    
+    @staticmethod
+    def _generate_salt(length: int = 16) -> str:
+        """
+        Generate a random salt for password hashing.
+        
+        Args:
+            length: Length of the salt string
+            
+        Returns:
+            str: Random salt string
+        """
+        alphabet = string.ascii_letters + string.digits + string.punctuation
+        return ''.join(secrets.choice(alphabet) for _ in range(length))
+    
+    @staticmethod
+    def _hash_password(password: str, salt: str) -> str:
+        """
+        Hash a password with the provided salt.
+        
+        Args:
+            password: Plain text password
+            salt: Salt string to use in hashing
+            
+        Returns:
+            str: Hashed password
+        """
+        # Combine password and salt
+        salted_password = password + salt
+        
+        # Hash using SHA-256
+        hash_obj = hashlib.sha256(salted_password.encode())
+        return hash_obj.hexdigest()
+    
+    @staticmethod
+    def _generate_session_token(length: int = 64) -> str:
+        """
+        Generate a secure random session token.
+        
+        Args:
+            length: Length of the token string
+            
+        Returns:
+            str: Random session token
+        """
+        alphabet = string.ascii_letters + string.digits
+        return ''.join(secrets.choice(alphabet) for _ in range(length))
