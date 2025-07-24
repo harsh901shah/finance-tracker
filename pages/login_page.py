@@ -419,9 +419,9 @@ class LoginPage:
             transition: background-color 0.2s;
         }
         
-        .social-btn img {
-            width: 1.25rem;
-            height: 1.25rem;
+        .social-btn svg {
+            width: 18px;
+            height: 18px;
         }
         
         .google-btn:hover {
