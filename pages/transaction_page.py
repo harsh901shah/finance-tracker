@@ -94,16 +94,22 @@ class TransactionPage:
         
         with col3:
             # Amount range filter
-            if 'amount' in df.columns:
+            if 'amount' in df.columns and len(df) > 0:
                 min_amount = float(df['amount'].min())
                 max_amount = float(df['amount'].max())
-                amount_range = st.slider(
-                    "Amount Range ($)",
-                    min_value=min_amount,
-                    max_value=max_amount,
-                    value=(min_amount, max_amount),
-                    step=1.0
-                )
+                
+                # Handle case where all amounts are the same
+                if min_amount >= max_amount:
+                    st.write(f"Amount: ${min_amount:.2f}")
+                    amount_range = (min_amount, min_amount)
+                else:
+                    amount_range = st.slider(
+                        "Amount Range ($)",
+                        min_value=min_amount,
+                        max_value=max_amount,
+                        value=(min_amount, max_amount),
+                        step=1.0
+                    )
             else:
                 amount_range = None
         
@@ -234,6 +240,11 @@ class TransactionPage:
             with col3:
                 if st.button("🗑️ Delete Selected", use_container_width=True, type="secondary"):
                     st.warning("Select transactions to delete (feature coming soon)")
+            
+            # Check for additional data columns
+            standard_columns = ['date', 'description', 'amount', 'type', 'category', 'payment_method']
+            additional_columns = [col for col in display_df.columns if col not in standard_columns and col != 'additional_data']
+            has_additional_data = len(additional_columns) > 0 or 'additional_data' in display_df.columns
             
             # Option to view additional data if available
             if has_additional_data:
