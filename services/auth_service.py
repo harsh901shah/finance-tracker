@@ -17,6 +17,8 @@ import string
 import re
 from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
+# Consider adding bcrypt for production environments
+# import bcrypt
 from services.logger_service import LoggerService
 
 class AuthError(Exception):
@@ -68,6 +70,9 @@ class AuthService:
     
     # Default session duration in days
     SESSION_DURATION_DAYS = 30
+    
+    # Maximum age of expired sessions to keep (in days)
+    SESSION_CLEANUP_THRESHOLD_DAYS = 7
     
     @classmethod
     def initialize_auth_database(cls):
@@ -122,6 +127,9 @@ class AuthService:
             
             conn.commit()
             cls.logger.info("Auth database initialized successfully")
+            
+            # Clean up expired sessions on initialization
+            cls._cleanup_expired_sessions()
         except sqlite3.Error as e:
             # Roll back any changes if an error occurs to maintain database integrity
             if conn:
@@ -339,6 +347,10 @@ class AuthService:
             
             conn.commit()
             
+            # Clean up expired sessions periodically
+            # We do this after successful login to avoid impacting performance on failed attempts
+            cls._cleanup_expired_sessions()
+            
             # Prepare user data to return
             # Note: We don't include sensitive data like password hash or salt
             user_data = {
@@ -492,6 +504,43 @@ class AuthService:
             if conn:
                 conn.close()
     
+    @classmethod
+    def _cleanup_expired_sessions(cls) -> None:
+        """
+        Remove expired sessions from the database.
+        
+        This method deletes sessions that have expired beyond a certain threshold
+        (default: 7 days past expiration). This helps keep the database clean and
+        improves performance by removing unnecessary records.
+        
+        The cleanup is performed periodically during login operations to avoid
+        impacting normal application performance.
+        """
+        conn = None
+        try:
+            # Calculate the cutoff date for session cleanup
+            # We keep recently expired sessions for a while in case they need to be audited
+            cutoff_date = (datetime.now() - timedelta(days=cls.SESSION_CLEANUP_THRESHOLD_DAYS)).isoformat()
+            
+            conn = sqlite3.connect(cls.DB_FILE)
+            cursor = conn.cursor()
+            
+            # Delete expired sessions older than the cutoff date
+            cursor.execute("DELETE FROM sessions WHERE expires_at < ?", (cutoff_date,))
+            deleted_count = cursor.rowcount
+            conn.commit()
+            
+            if deleted_count > 0:
+                cls.logger.info(f"Cleaned up {deleted_count} expired sessions")
+        except Exception as e:
+            # Log errors but don't propagate them since this is a background operation
+            if conn:
+                conn.rollback()
+            cls.logger.error(f"Error cleaning up expired sessions: {str(e)}")
+        finally:
+            if conn:
+                conn.close()
+    
     @staticmethod
     def _generate_salt(length: int = 16) -> str:
         """
@@ -551,6 +600,9 @@ class AuthService:
         # password hashing algorithm like bcrypt, Argon2, or PBKDF2
         hash_obj = hashlib.sha256(salted_password.encode())
         return hash_obj.hexdigest()
+        
+        # Example implementation with bcrypt (for production use):
+        # return bcrypt.hashpw(password.encode(), salt.encode()).decode()
     
     @staticmethod
     def _generate_session_token(length: int = 64) -> str:
