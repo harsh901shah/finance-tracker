@@ -49,32 +49,43 @@ class TransactionPage:
     
     @staticmethod
     def show_list():
-        st.header("Transaction History")
+        st.header("📋 Transaction History")
         
         # Load transactions
         transactions = TransactionService.load_transactions()
         
         if not transactions:
             st.info("No transactions found. Add some transactions to see them here.")
+            st.info("💡 Click 'Add Transaction' in the sidebar to get started!")
             return
         
         # Convert transactions to DataFrame
         df = pd.DataFrame(transactions)
         
-        # Filters
-        col1, col2, col3 = st.columns(3)
+        # Search and filters section
+        st.subheader("🔍 Search & Filters")
+        
+        # Search bar
+        search_term = st.text_input("🔍 Search transactions", placeholder="Search by description, amount, or category...")
+        
+        # Advanced filters
+        col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
+            # Transaction type filter
+            all_types = sorted(df['type'].unique()) if 'type' in df.columns else []
             transaction_type_filter = st.multiselect(
-                "Filter by Type", 
-                options=["Income", "Expense"],
-                default=["Income", "Expense"]
+                "Type", 
+                options=all_types,
+                default=all_types
             )
         
         with col2:
+            # Category filter
             if 'category' in df.columns:
                 categories = sorted(df['category'].unique())
                 category_filter = st.multiselect(
-                    "Filter by Category", 
+                    "Category", 
                     options=categories,
                     default=[]
                 )
@@ -82,6 +93,22 @@ class TransactionPage:
                 category_filter = []
         
         with col3:
+            # Amount range filter
+            if 'amount' in df.columns:
+                min_amount = float(df['amount'].min())
+                max_amount = float(df['amount'].max())
+                amount_range = st.slider(
+                    "Amount Range ($)",
+                    min_value=min_amount,
+                    max_value=max_amount,
+                    value=(min_amount, max_amount),
+                    step=1.0
+                )
+            else:
+                amount_range = None
+        
+        with col4:
+            # Date range filter
             if 'date' in df.columns:
                 df['date'] = pd.to_datetime(df['date'])
                 min_date = df['date'].min().date()
@@ -98,12 +125,32 @@ class TransactionPage:
         # Apply filters
         filtered_df = df.copy()
         
+        # Apply search filter
+        if search_term:
+            search_mask = (
+                filtered_df['description'].str.contains(search_term, case=False, na=False) |
+                filtered_df['category'].str.contains(search_term, case=False, na=False) |
+                filtered_df['amount'].astype(str).str.contains(search_term, na=False)
+            )
+            filtered_df = filtered_df[search_mask]
+        
+        # Apply type filter
         if transaction_type_filter:
             filtered_df = filtered_df[filtered_df['type'].isin(transaction_type_filter)]
         
+        # Apply category filter
         if category_filter:
             filtered_df = filtered_df[filtered_df['category'].isin(category_filter)]
         
+        # Apply amount range filter
+        if amount_range:
+            min_amt, max_amt = amount_range
+            filtered_df = filtered_df[
+                (filtered_df['amount'] >= min_amt) & 
+                (filtered_df['amount'] <= max_amt)
+            ]
+        
+        # Apply date range filter
         if date_range and len(date_range) == 2:
             start_date, end_date = date_range
             filtered_df = filtered_df[
@@ -111,33 +158,79 @@ class TransactionPage:
                 (filtered_df['date'] <= pd.Timestamp(end_date))
             ]
         
+        # Display results summary
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("📊 Transactions Found", len(filtered_df))
+        with col2:
+            if not filtered_df.empty:
+                total_amount = filtered_df['amount'].sum()
+                st.metric("💰 Total Amount", f"${total_amount:,.2f}")
+        with col3:
+            if not filtered_df.empty:
+                avg_amount = filtered_df['amount'].mean()
+                st.metric("📈 Average Amount", f"${avg_amount:,.2f}")
+        
         # Display transactions
         if not filtered_df.empty:
+            # Sort options
+            col1, col2, col3 = st.columns([2, 1, 1])
+            with col1:
+                st.subheader("📋 Transactions")
+            with col2:
+                sort_by = st.selectbox("Sort by", ["date", "amount", "description", "category", "type"])
+            with col3:
+                sort_order = st.selectbox("Order", ["Descending", "Ascending"])
+            
+            # Apply sorting
+            ascending = sort_order == "Ascending"
+            filtered_df = filtered_df.sort_values(by=sort_by, ascending=ascending)
+            
             # Convert date back to string for display
             display_df = filtered_df.copy()
             if 'date' in display_df.columns:
                 display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
             
-            # Identify standard columns and additional data columns
+            # Identify standard columns
             standard_columns = ['date', 'description', 'amount', 'type', 'category', 'payment_method']
             display_columns = [col for col in standard_columns if col in display_df.columns]
             
-            # Check for additional data
-            additional_columns = [col for col in display_df.columns if col not in standard_columns and col != 'additional_data']
-            has_additional_data = len(additional_columns) > 0 or 'additional_data' in display_df.columns
-            
-            # Display standard columns
+            # Display transactions table
             st.dataframe(
                 display_df[display_columns],
                 column_config={
-                    "amount": st.column_config.NumberColumn(
-                        "Amount ($)",
-                        format="$%.2f",
-                    ),
+                    "date": st.column_config.DateColumn("Date"),
+                    "description": st.column_config.TextColumn("Description", width="large"),
+                    "amount": st.column_config.NumberColumn("Amount ($)", format="$%.2f"),
+                    "type": st.column_config.TextColumn("Type"),
+                    "category": st.column_config.TextColumn("Category"),
+                    "payment_method": st.column_config.TextColumn("Payment Method")
                 },
                 hide_index=True,
                 use_container_width=True
             )
+            
+            # Bulk operations
+            st.subheader("🔧 Bulk Operations")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if st.button("📊 Export to CSV", use_container_width=True):
+                    csv = display_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download CSV",
+                        data=csv,
+                        file_name=f"transactions_{datetime.now().strftime('%Y%m%d')}.csv",
+                        mime="text/csv"
+                    )
+            
+            with col2:
+                if st.button("📈 View Summary", use_container_width=True):
+                    TransactionPage._show_transaction_summary(filtered_df)
+            
+            with col3:
+                if st.button("🗑️ Delete Selected", use_container_width=True, type="secondary"):
+                    st.warning("Select transactions to delete (feature coming soon)")
             
             # Option to view additional data if available
             if has_additional_data:
@@ -183,8 +276,40 @@ class TransactionPage:
                         else:
                             st.info("No additional data available for this transaction.")
             
-            # Add delete functionality
-            if st.button("Delete Selected Transactions"):
-                st.warning("Delete functionality would be implemented here")
         else:
             st.info("No transactions match your filters.")
+            st.info("💡 Try adjusting your search terms or filters.")
+    
+    @staticmethod
+    def _show_transaction_summary(df):
+        """Show detailed transaction summary"""
+        st.subheader("📊 Transaction Summary")
+        
+        # Summary by type
+        type_summary = df.groupby('type')['amount'].agg(['count', 'sum', 'mean']).round(2)
+        st.write("**By Type:**")
+        st.dataframe(type_summary, column_config={
+            "count": "Count",
+            "sum": st.column_config.NumberColumn("Total ($)", format="$%.2f"),
+            "mean": st.column_config.NumberColumn("Average ($)", format="$%.2f")
+        })
+        
+        # Summary by category
+        if 'category' in df.columns:
+            category_summary = df.groupby('category')['amount'].agg(['count', 'sum', 'mean']).round(2)
+            st.write("**By Category:**")
+            st.dataframe(category_summary, column_config={
+                "count": "Count",
+                "sum": st.column_config.NumberColumn("Total ($)", format="$%.2f"),
+                "mean": st.column_config.NumberColumn("Average ($)", format="$%.2f")
+            })
+        
+        # Monthly summary
+        if 'date' in df.columns:
+            df['month'] = pd.to_datetime(df['date']).dt.to_period('M')
+            monthly_summary = df.groupby('month')['amount'].agg(['count', 'sum']).round(2)
+            st.write("**By Month:**")
+            st.dataframe(monthly_summary, column_config={
+                "count": "Count",
+                "sum": st.column_config.NumberColumn("Total ($)", format="$%.2f")
+            })
