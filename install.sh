@@ -40,7 +40,7 @@ if [ $? -eq 0 ]; then
     fi
     echo "2. Run the application: python3 run.py"
     echo ""
-    echo "Or simply: streamlit run app.py"
+    echo "Or simply: streamlit run finance_tracker.py"
 else
     echo "Error installing dependencies. Please check the error message above."
     exit 1
