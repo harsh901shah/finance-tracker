@@ -128,24 +128,65 @@ class FinanceApp:
                     
                     st.markdown("<div class='sidebar-nav'>", unsafe_allow_html=True)
                     
-                    # Navigation items with icons
+                    # Navigation items with standardized icons
                     nav_items = {
-                        "Dashboard": "📊",
-                        "Net Worth": "💰",
-                        "Transactions": "📝",
-                        "Add Transaction": "➕",
-                        "Budget": "📈",
-                        "Upload Documents": "📄",
-                        "Settings": "⚙️",
-                        "DB Viewer": "🔍"
+                        "Dashboard": "<i class='fas fa-chart-bar'></i>",
+                        "Net Worth": "<i class='fas fa-wallet'></i>",
+                        "Transactions": "<i class='fas fa-exchange-alt'></i>",
+                        "Budget": "<i class='fas fa-chart-pie'></i>",
+                        "Upload Documents": "<i class='fas fa-file-upload'></i>",
+                        "Settings": "<i class='fas fa-cog'></i>",
+                        "DB Viewer": "<i class='fas fa-database'></i>"
                     }
+                    
+                    # Group navigation items
+                    st.markdown("<div class='nav-group'>", unsafe_allow_html=True)
+                    st.markdown("<h2>Main</h2>", unsafe_allow_html=True)
                     
                     selected_page = None
                     
-                    # Create navigation buttons
-                    for page_name, icon in nav_items.items():
+                    # Create navigation buttons for main items
+                    for page_name in ["Dashboard", "Net Worth"]:
+                        icon = nav_items[page_name]
                         if st.sidebar.button(f"{icon} {page_name}", key=f"nav_{page_name}", use_container_width=True):
                             selected_page = page_name
+                    
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    # Transactions group
+                    st.markdown("<div class='nav-group'>", unsafe_allow_html=True)
+                    st.markdown("<h2>Transactions</h2>", unsafe_allow_html=True)
+                    
+                    # Transactions navigation
+                    if st.sidebar.button(f"{nav_items['Transactions']} View Transactions", key="nav_Transactions", use_container_width=True):
+                        selected_page = "Transactions"
+                    
+                    # Add Transaction button (now styled as a CTA)
+                    if st.sidebar.button("<i class='fas fa-plus'></i> Add Transaction", key="nav_Add_Transaction", use_container_width=True, type="primary"):
+                        selected_page = "Add Transaction"
+                    
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    # Planning group
+                    st.markdown("<div class='nav-group'>", unsafe_allow_html=True)
+                    st.markdown("<h2>Planning</h2>", unsafe_allow_html=True)
+                    
+                    if st.sidebar.button(f"{nav_items['Budget']} Budget", key="nav_Budget", use_container_width=True):
+                        selected_page = "Budget"
+                    
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    # Tools group
+                    st.markdown("<div class='nav-group'>", unsafe_allow_html=True)
+                    st.markdown("<h2>Tools</h2>", unsafe_allow_html=True)
+                    
+                    for page_name in ["Upload Documents", "Settings", "DB Viewer"]:
+                        icon = nav_items[page_name]
+                        button_text = "Document Upload" if page_name == "Upload Documents" else page_name
+                        if st.sidebar.button(f"{icon} {button_text}", key=f"nav_{page_name}", use_container_width=True):
+                            selected_page = page_name
+                    
+                    st.markdown("</div>", unsafe_allow_html=True)
                     
                     # Default to Dashboard if no page is selected
                     if selected_page is None:
@@ -161,7 +202,7 @@ class FinanceApp:
                     
                     # Logout button at the bottom
                     st.markdown("<div class='sidebar-footer'>", unsafe_allow_html=True)
-                    if st.button("Logout", key="logout_button", use_container_width=True):
+                    if st.button("<i class='fas fa-sign-out-alt'></i> Logout", key="logout_button", use_container_width=True):
                         # Handle logout
                         if "user" in st.session_state and st.session_state.user and "session_token" in st.session_state.user:
                             AuthService.logout(st.session_state.user["session_token"])
@@ -212,6 +253,9 @@ class FinanceApp:
         """
         st.markdown("""
         <style>
+        /* Import Font Awesome for icons */
+        @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
+        
         /* Sidebar styling */
         section[data-testid="stSidebar"] {
             background-color: #2C3E50;
@@ -224,19 +268,35 @@ class FinanceApp:
             color: white;
             text-align: left;
             font-weight: normal;
-            padding: 0.5rem 0;
+            padding: 0.75rem 1rem;
             border-radius: 5px;
             border: none;
             margin: 0.25rem 0;
+            transition: all 0.2s ease;
         }
         
         section[data-testid="stSidebar"] button:hover {
             background-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(3px);
+        }
+        
+        /* Primary button styling (Add Transaction) */
+        section[data-testid="stSidebar"] button[kind="primary"] {
+            background-color: #3498DB !important;
+            color: white !important;
+            font-weight: 500 !important;
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        section[data-testid="stSidebar"] button[kind="primary"]:hover {
+            background-color: #2980B9 !important;
+            transform: translateX(3px);
         }
         
         /* Sidebar header */
         .sidebar-header {
-            padding: 1.5rem 0;
+            padding: 1.5rem 1rem;
             margin-bottom: 1rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
@@ -250,7 +310,7 @@ class FinanceApp:
         
         /* Sidebar user section */
         .sidebar-user {
-            padding-bottom: 1rem;
+            padding: 0 1rem 1rem 1rem;
             margin-bottom: 1rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
@@ -263,6 +323,28 @@ class FinanceApp:
         /* Sidebar navigation */
         .sidebar-nav {
             margin-bottom: 2rem;
+            padding: 0 1rem;
+        }
+        
+        /* Navigation groups */
+        .nav-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .nav-group h2 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 0.5rem;
+            padding-left: 0.5rem;
+        }
+        
+        /* Icon styling */
+        .fas {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
         }
         
         /* Sidebar footer */
@@ -270,7 +352,7 @@ class FinanceApp:
             position: absolute;
             bottom: 1rem;
             width: 100%;
-            padding-right: 2rem;
+            padding: 0 1rem;
         }
         
         /* Logout button */
@@ -279,10 +361,12 @@ class FinanceApp:
             color: white !important;
             text-align: center !important;
             font-weight: 500 !important;
+            padding: 0.75rem !important;
         }
         
         .sidebar-footer button:hover {
             background-color: #C0392B !important;
+            transform: translateY(-2px) !important;
         }
         </style>
         """, unsafe_allow_html=True)
