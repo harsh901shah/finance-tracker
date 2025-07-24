@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import calendar
 import random
 from services.financial_data_service import TransactionService
@@ -37,13 +37,16 @@ class DashboardPage:
         
         with col2:
             if selected_period == "Custom":
+                # Calculate first day of current month and today's date for default range
+                first_day = date(current_year, current_month, 1)
+                today = date.today()
+                
+                # Ensure the default date range is within allowed bounds
                 date_range = st.date_input(
                     "Select date range",
-                    value=(
-                        datetime(current_year, current_month, 1),
-                        datetime(current_year, current_month, calendar.monthrange(current_year, current_month)[1])
-                    ),
-                    max_value=current_date
+                    value=(first_day, today),
+                    min_value=date(2015, 1, 1),
+                    max_value=today
                 )
         
         # Get transactions data

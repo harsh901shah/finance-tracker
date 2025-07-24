@@ -11,6 +11,7 @@ import traceback
 from pages.dashboard_page import DashboardPage
 from pages.networth_page import NetWorthPage
 from pages.transaction_page import TransactionPage
+from pages.add_transaction_page import AddTransactionPage
 from pages.budget_page import BudgetPage
 from pages.settings_page import SettingsPage
 from pages.document_upload_page import DocumentUploadPage
@@ -53,8 +54,8 @@ class FinanceApp:
         self.pages = {
             "Dashboard": DashboardPage,
             "Net Worth": NetWorthPage,
-            "Transactions": TransactionPage.show_list,
-            "Add Transaction": TransactionPage.show_add,
+            "View Transactions": TransactionPage.show_list,
+            "Add Transaction": AddTransactionPage,
             "Budget": BudgetPage,
             "Upload Documents": DocumentUploadPage,
             "Settings": SettingsPage,
@@ -117,65 +118,79 @@ class FinanceApp:
                 
                 # Sidebar for navigation
                 with st.sidebar:
-                    st.markdown("<div class='sidebar-header'>", unsafe_allow_html=True)
-                    st.markdown("<h1>Finance Tracker</h1>", unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    st.markdown('<div class="sidebar-header"><h1>Finance Tracker</h1><p>Welcome, ' + st.session_state.user['full_name'] + '</p></div>', unsafe_allow_html=True)
                     
-                    # Display user information
-                    st.markdown("<div class='sidebar-user'>", unsafe_allow_html=True)
-                    st.markdown(f"<p>Welcome, <strong>{st.session_state.user['full_name']}</strong></p>", unsafe_allow_html=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    # Get current page or default to Dashboard
+                    if "current_page" not in st.session_state:
+                        st.session_state.current_page = "Dashboard"
                     
-                    st.markdown("<div class='sidebar-nav'>", unsafe_allow_html=True)
-                    
-                    # Navigation items with icons
-                    nav_items = {
-                        "Dashboard": "📊",
-                        "Net Worth": "💰",
-                        "Transactions": "📝",
-                        "Add Transaction": "➕",
-                        "Budget": "📈",
-                        "Upload Documents": "📄",
-                        "Settings": "⚙️",
-                        "DB Viewer": "🔍"
-                    }
-                    
+                    current_page = st.session_state.current_page
                     selected_page = None
                     
-                    # Create navigation buttons
-                    for page_name, icon in nav_items.items():
-                        if st.sidebar.button(f"{icon} {page_name}", key=f"nav_{page_name}", use_container_width=True):
-                            selected_page = page_name
+                    # Overview section - Main dashboard and financial summary pages
+                    st.markdown('<div class="nav-section"><div class="nav-label">OVERVIEW</div></div>', unsafe_allow_html=True)
+                    if st.sidebar.button("Dashboard", key="nav_Dashboard", use_container_width=True, type="primary" if current_page == "Dashboard" else "secondary"):
+                        selected_page = "Dashboard"
+                        st.session_state.current_page = "Dashboard"
+                        st.rerun()  # Force page refresh to update active button styling
+                    if st.sidebar.button("Net Worth", key="nav_Net_Worth", use_container_width=True, type="primary" if current_page == "Net Worth" else "secondary"):
+                        selected_page = "Net Worth"
+                        st.session_state.current_page = "Net Worth"
+                        st.rerun()
                     
-                    # Default to Dashboard if no page is selected
-                    if selected_page is None:
-                        if "current_page" in st.session_state:
-                            selected_page = st.session_state.current_page
-                        else:
-                            selected_page = "Dashboard"
+                    # Transactions section - Core transaction management functionality
+                    st.markdown('<div class="nav-section"><div class="nav-label">TRANSACTIONS</div></div>', unsafe_allow_html=True)
+                    if st.sidebar.button("View Transactions", key="nav_View_Transactions", use_container_width=True, type="primary" if current_page == "View Transactions" else "secondary"):
+                        selected_page = "View Transactions"
+                        st.session_state.current_page = "View Transactions"
+                        st.rerun()
+                    if st.sidebar.button("Add Transaction", key="nav_Add_Transaction", use_container_width=True, type="primary" if current_page == "Add Transaction" else "secondary"):
+                        selected_page = "Add Transaction"
+                        st.session_state.current_page = "Add Transaction"
+                        st.rerun()
                     
-                    # Store current page in session state
-                    st.session_state.current_page = selected_page
+                    # Planning section - Budget and financial planning tools
+                    st.markdown('<div class="nav-section"><div class="nav-label">PLANNING</div></div>', unsafe_allow_html=True)
+                    if st.sidebar.button("Budget", key="nav_Budget", use_container_width=True, type="primary" if current_page == "Budget" else "secondary"):
+                        selected_page = "Budget"
+                        st.session_state.current_page = "Budget"
+                        st.rerun()
                     
-                    st.markdown("</div>", unsafe_allow_html=True)
+                    # Tools section - Administrative and utility functions
+                    st.markdown('<div class="nav-section"><div class="nav-label">TOOLS</div></div>', unsafe_allow_html=True)
+                    if st.sidebar.button("Upload Documents", key="nav_Upload_Documents", use_container_width=True, type="primary" if current_page == "Upload Documents" else "secondary"):
+                        selected_page = "Upload Documents"
+                        st.session_state.current_page = "Upload Documents"
+                        st.rerun()
+                    if st.sidebar.button("Settings", key="nav_Settings", use_container_width=True, type="primary" if current_page == "Settings" else "secondary"):
+                        selected_page = "Settings"
+                        st.session_state.current_page = "Settings"
+                        st.rerun()
+                    if st.sidebar.button("DB Viewer", key="nav_DB_Viewer", use_container_width=True, type="primary" if current_page == "DB Viewer" else "secondary"):
+                        selected_page = "DB Viewer"
+                        st.session_state.current_page = "DB Viewer"
+                        st.rerun()
                     
-                    # Logout button at the bottom
-                    st.markdown("<div class='sidebar-footer'>", unsafe_allow_html=True)
-                    if st.button("Logout", key="logout_button", use_container_width=True):
-                        # Handle logout
+                    # Use current page for display
+                    selected_page = current_page
+                    
+                    # End of navigation
+                    
+                    # Logout button
+                    st.markdown('<div class="logout-section"></div>', unsafe_allow_html=True)
+                    if st.sidebar.button("Logout", key="logout_button", use_container_width=True, type="secondary"):
                         if "user" in st.session_state and st.session_state.user and "session_token" in st.session_state.user:
                             AuthService.logout(st.session_state.user["session_token"])
                         st.session_state.user = None
                         st.session_state.authenticated = False
                         st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
             
                 # Display the selected page
                 try:
                     page = selected_page
                     if page == "Add Transaction":
-                        self.pages[page]()
-                    elif page == "Transactions":
+                        self.pages[page].show()
+                    elif page == "View Transactions":
                         self.pages[page]()
                     else:
                         self.pages[page].show()
@@ -204,85 +219,145 @@ class FinanceApp:
     
     @staticmethod
     def _apply_sidebar_css():
-        """
-        Apply custom CSS for styling the sidebar.
+        """Apply custom CSS for professional sidebar styling.
         
-        Adds styles for the sidebar layout, navigation buttons,
-        user information display, and logout button.
+        Creates enterprise-grade navigation with:
+        - Dark gradient background
+        - High contrast text for accessibility
+        - Professional button states (active/inactive/hover)
+        - Consistent spacing and typography
         """
         st.markdown("""
         <style>
-        /* Sidebar styling */
+        /* Sidebar container */
         section[data-testid="stSidebar"] {
-            background-color: #2C3E50;
-            color: white;
-            width: 250px;
+            background: linear-gradient(180deg, #1e293b 0%, #334155 100%);
+            width: 280px;
         }
         
-        section[data-testid="stSidebar"] button {
-            background-color: transparent;
-            color: white;
-            text-align: left;
-            font-weight: normal;
-            padding: 0.5rem 0;
-            border-radius: 5px;
-            border: none;
-            margin: 0.25rem 0;
-        }
-        
-        section[data-testid="stSidebar"] button:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+        section[data-testid="stSidebar"] .block-container {
+            padding: 0;
         }
         
         /* Sidebar header */
         .sidebar-header {
-            padding: 1.5rem 0;
-            margin-bottom: 1rem;
+            padding: 2rem 1.5rem 1.5rem 1.5rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 1rem;
         }
         
         .sidebar-header h1 {
-            color: white;
+            color: #FFFFFF !important;
             font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            text-align: left;
+        }
+        
+        .sidebar-header p {
+            color: #D0D0D0 !important;
+            font-size: 0.875rem;
+            margin: 0;
+            text-align: left;
+        }
+        
+        /* Navigation sections */
+        .nav-section {
+            margin: 1.5rem 0 0.75rem 0;
+        }
+        
+        .nav-label {
+            color: #B0B0B0 !important;
+            font-size: 0.75rem;
             font-weight: 600;
-            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0 1.5rem;
+            margin-bottom: 0.5rem;
         }
         
-        /* Sidebar user section */
-        .sidebar-user {
-            padding-bottom: 1rem;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        /* Button styling */
+        section[data-testid="stSidebar"] button {
+            width: calc(100% - 1.5rem);
+            margin: 0.125rem 0.75rem;
+            padding: 0.875rem 1.25rem;
+            border-radius: 0.5rem;
+            border: none;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.15s ease;
+            text-align: left;
+            height: 44px;
+            display: flex;
+            align-items: center;
         }
         
-        .sidebar-user p {
-            color: rgba(255, 255, 255, 0.8);
-            margin: 0;
+        /* Force button text colors */
+        section[data-testid="stSidebar"] button[kind="secondary"] {
+            background-color: transparent !important;
+            color: #E0E0E0 !important;
+            border-left: 3px solid transparent;
         }
         
-        /* Sidebar navigation */
-        .sidebar-nav {
-            margin-bottom: 2rem;
+        section[data-testid="stSidebar"] button[kind="secondary"]:hover {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            color: #FFFFFF !important;
+            border-left: 3px solid rgba(59, 130, 246, 0.5);
         }
         
-        /* Sidebar footer */
-        .sidebar-footer {
-            position: absolute;
-            bottom: 1rem;
-            width: 100%;
-            padding-right: 2rem;
+        section[data-testid="stSidebar"] button[kind="primary"] {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #FFFFFF !important;
+            border-left: 3px solid #3b82f6;
+            font-weight: 600;
         }
         
-        /* Logout button */
-        .sidebar-footer button {
-            background-color: #E74C3C !important;
-            color: white !important;
-            text-align: center !important;
-            font-weight: 500 !important;
+        section[data-testid="stSidebar"] button[kind="primary"]:hover {
+            background-color: rgba(59, 130, 246, 0.2) !important;
+            color: #FFFFFF !important;
         }
         
-        .sidebar-footer button:hover {
-            background-color: #C0392B !important;
+        /* Force all button text to be visible */
+        section[data-testid="stSidebar"] button * {
+            color: inherit !important;
+        }
+        
+        /* Logout section */
+        .logout-section {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Override ALL Streamlit text in sidebar */
+        section[data-testid="stSidebar"] * {
+            color: #E0E0E0 !important;
+        }
+        
+        section[data-testid="stSidebar"] h1,
+        section[data-testid="stSidebar"] h2,
+        section[data-testid="stSidebar"] h3 {
+            color: #FFFFFF !important;
+        }
+        
+        section[data-testid="stSidebar"] button {
+            color: #E0E0E0 !important;
+        }
+        
+        section[data-testid="stSidebar"] button[kind="primary"] {
+            color: #FFFFFF !important;
+        }
+        
+        section[data-testid="stSidebar"] .sidebar-header {
+            display: block !important;
+        }
+        
+        section[data-testid="stSidebar"] .nav-section {
+            display: block !important;
+        }
+        
+        section[data-testid="stSidebar"] .logout-section {
+            display: block !important;
         }
         </style>
         """, unsafe_allow_html=True)
