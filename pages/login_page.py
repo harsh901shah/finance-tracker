@@ -68,68 +68,76 @@ class LoginPage:
             # Apply custom CSS for styling
             cls._apply_custom_css()
             
-            # Page layout
-            st.markdown('<div class="landing-container">', unsafe_allow_html=True)
+            # Override Streamlit default container padding for full-width layout
+            st.markdown("""
+                <style>
+                .block-container {
+                    padding-top: 0;
+                    padding-bottom: 0;
+                    max-width: 100%;
+                }
+                </style>
+            """, unsafe_allow_html=True)
             
-            # Header with logo
-            st.markdown('<header class="landing-header"><div class="logo-container"><h1 class="logo">Finance<span>Tracker</span></h1></div></header>', unsafe_allow_html=True)
-            
-            # Main content with two columns
-            col1, col2 = st.columns([1, 1])
-            
-            # Left column - Hero section with features
-            with col1:
-                UIComponents.hero_section()
-            
-            # Right column - Auth form (login or registration)
-            with col2:
-                # Default to login view if not set
-                if "auth_view" not in st.session_state:
-                    st.session_state.auth_view = "login"
+            # Use Streamlit container and columns for responsive layout
+            with st.container():
+                # Header with logo - compact design
+                st.markdown('<header class="landing-header"><div class="logo-container"><h1 class="logo">Finance<span>Tracker</span></h1></div></header>', unsafe_allow_html=True)
                 
-                if st.session_state.auth_view == "login":
-                    # Show login form
-                    login_button, identifier, password, login_method = AuthComponents.login_form()
-                    
-                    # Link to switch to register view
-                    st.markdown('<div class="auth-switch"><p>Don\'t have an account?</p>', unsafe_allow_html=True)
-                    if st.button("Create Account", key="switch_to_register", use_container_width=True):
-                        st.session_state.auth_view = "register"
-                        st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    # Handle login button click
-                    if login_button:
-                        if AuthComponents.handle_login(identifier, password, login_method):
-                            st.rerun()
-                else:
-                    # Show registration form
-                    register_button, username, password, confirm_password, email, phone_number, full_name, terms_agreed = AuthComponents.registration_form()
-                    
-                    # Link to switch to login view
-                    st.markdown('<div class="auth-switch"><p>Already have an account?</p>', unsafe_allow_html=True)
-                    if st.button("Sign In", key="switch_to_login", use_container_width=True):
+                # Main content with two columns - no gap between columns
+                cols = st.columns([1, 1], gap="small")
+                
+                # Left column - Hero section with features
+                with cols[0]:
+                    UIComponents.hero_section()
+                
+                # Right column - Auth form (login or registration)
+                with cols[1]:
+                    # Default to login view if not set
+                    if "auth_view" not in st.session_state:
                         st.session_state.auth_view = "login"
-                        st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # Handle registration button click
-                    if register_button:
-                        if AuthComponents.handle_registration(username, password, confirm_password, email, phone_number, full_name, terms_agreed):
+                    if st.session_state.auth_view == "login":
+                        # Show login form
+                        login_button, identifier, password, login_method = AuthComponents.login_form()
+                        
+                        # Link to switch to register view
+                        st.markdown('<div class="auth-switch"><p>Don\'t have an account?</p>', unsafe_allow_html=True)
+                        if st.button("Create Account", key="switch_to_register", use_container_width=True):
+                            st.session_state.auth_view = "register"
+                            st.rerun()
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        # Handle login button click
+                        if login_button:
+                            if AuthComponents.handle_login(identifier, password, login_method):
+                                st.rerun()
+                    else:
+                        # Show registration form
+                        register_button, username, password, confirm_password, email, phone_number, full_name, terms_agreed = AuthComponents.registration_form()
+                        
+                        # Link to switch to login view
+                        st.markdown('<div class="auth-switch"><p>Already have an account?</p>', unsafe_allow_html=True)
+                        if st.button("Sign In", key="switch_to_login", use_container_width=True):
                             st.session_state.auth_view = "login"
                             st.rerun()
-            
-            # Testimonials section
-            UIComponents.testimonials_section()
-            
-            # Random finance quote
-            quote = random.choice(cls.FINANCE_QUOTES)
-            UIComponents.quote_section(quote['quote'], quote['author'])
-            
-            # Footer
-            UIComponents.footer()
-            
-            st.markdown('</div>', unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+                        
+                        # Handle registration button click
+                        if register_button:
+                            if AuthComponents.handle_registration(username, password, confirm_password, email, phone_number, full_name, terms_agreed):
+                                st.session_state.auth_view = "login"
+                                st.rerun()
+                
+                # Place testimonials/quote after main content for better visual flow
+                UIComponents.testimonials_section()
+                
+                # Random finance quote
+                quote = random.choice(cls.FINANCE_QUOTES)
+                UIComponents.quote_section(quote['quote'], quote['author'])
+                
+                # Footer
+                UIComponents.footer()
             
             return False
         except Exception as e:
@@ -206,6 +214,7 @@ class LoginPage:
         """
         st.markdown("""
         <style>
+        /* Custom styles for layout optimization and mobile responsiveness */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
         :root {
@@ -245,11 +254,21 @@ class LoginPage:
             display: none;
         }
         
-        /* Landing page container */
-        .landing-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 0 1rem;
+        /* Remove default padding */
+        .block-container {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            max-width: 1200px !important;
+        }
+        
+        /* Remove whitespace */
+        .st-emotion-cache-1kyxreq {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        
+        .st-emotion-cache-16txtl3 {
+            padding: 0 !important;
         }
         
         /* Header */
@@ -258,7 +277,7 @@ class LoginPage:
             justify-content: space-between;
             align-items: center;
             padding: 1rem 0;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0;
         }
         
         .logo-container {
@@ -279,7 +298,7 @@ class LoginPage:
         
         /* Hero section */
         .hero-content {
-            padding: 0.5rem 0;
+            padding: 0;
         }
         
         .hero-content h1 {
@@ -401,9 +420,9 @@ class LoginPage:
             transition: background-color 0.2s;
         }
         
-        .social-btn img {
-            width: 1.25rem;
-            height: 1.25rem;
+        .social-btn svg {
+            width: 18px;
+            height: 18px;
         }
         
         .google-btn:hover {
@@ -491,9 +510,9 @@ class LoginPage:
         
         /* Testimonials */
         .testimonials {
-            padding: 2.5rem 0;
+            padding: 2rem 0;
             background-color: #F3F4F6;
-            margin: 1.5rem 0;
+            margin: 1rem 0;
             border-radius: 1rem;
         }
         
@@ -554,9 +573,9 @@ class LoginPage:
         
         /* Quote section */
         .quote-section {
-            padding: 1.5rem 0;
+            padding: 1rem 0;
             text-align: center;
-            margin-top: -0.5rem;
+            margin-top: 0;
         }
         
         .quote-container {
@@ -582,8 +601,8 @@ class LoginPage:
         .landing-footer {
             background-color: #1F2937;
             color: white;
-            padding: 2.5rem 0 1rem;
-            margin-top: 2.5rem;
+            padding: 2rem 0 1rem;
+            margin-top: 1rem;
             border-radius: 1rem 1rem 0 0;
         }
         
@@ -729,14 +748,20 @@ class LoginPage:
             font-size: 0.875rem !important;
         }
         
+        /* Fix column gaps */
+        .row-widget.stHorizontal {
+            gap: 0 !important;
+        }
+        
+        /* Remove empty containers */
+        .element-container:empty {
+            display: none !important;
+        }
+        
         /* Responsive styles */
         @media (max-width: 768px) {
-            .landing-main {
-                flex-direction: column;
-            }
-            
             .auth-container {
-                margin: 1rem auto;
+                margin: 0 auto;
                 max-width: 100%;
             }
             
@@ -751,7 +776,7 @@ class LoginPage:
             
             .testimonials {
                 padding: 1.5rem 0;
-                margin: 1.5rem 0;
+                margin: 1rem 0;
             }
             
             .footer-content {
@@ -766,10 +791,6 @@ class LoginPage:
         }
         
         @media (min-width: 769px) and (max-width: 1024px) {
-            .landing-container {
-                padding: 0 1.5rem;
-            }
-            
             .auth-container {
                 padding: 1.25rem;
             }
