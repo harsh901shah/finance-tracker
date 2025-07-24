@@ -39,18 +39,38 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="salary_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Income',
-                                    'description': f"Monthly Salary" + (f" - {notes}" if notes else ""),
-                                    'category': 'Salary',
-                                    'payment_method': payment_method
-                                }
-                                transaction_id = DatabaseService.add_transaction(transaction)
-                                st.success(f"✅ Monthly Salary added: ${amount:.2f}")
-                                st.session_state.show_salary_form = False
-                                st.rerun()
+                                if amount <= 0:
+                                    st.error("Amount must be greater than zero")
+                                elif not transaction_date:
+                                    st.error("Date is required")
+                                else:
+                                    try:
+                                        date_str = transaction_date.strftime('%Y-%m-%d')
+                                        
+                                        # Check for duplicates
+                                        if AddTransactionPage._check_duplicate_transaction("Monthly Salary", amount, date_str, "Salary"):
+                                            st.warning(f"⚠️ Similar Monthly Salary already exists for {date_str}")
+                                        else:
+                                            transaction = {
+                                                'date': date_str,
+                                                'amount': float(amount),
+                                                'type': 'Income',
+                                                'description': f"Monthly Salary" + (f" - {notes}" if notes else ""),
+                                                'category': 'Salary',
+                                                'payment_method': payment_method
+                                            }
+                                            transaction_id = DatabaseService.add_transaction(transaction)
+                                            st.success(f"✅ Monthly Salary added: ${amount:.2f}")
+                                            
+                                            # Clear all session states
+                                            for key in list(st.session_state.keys()):
+                                                if key.startswith(('show_', 'cached_')):
+                                                    del st.session_state[key]
+                                            
+                                            st.rerun()
+                                    except Exception as e:
+                                        st.error("Failed to add transaction. Please try again.")
+                                        print(f"Salary transaction error: {str(e)}")
                 
                 if st.button("🏦 Interest Income", use_container_width=True, key="interest_btn"):
                     st.session_state.show_interest_form = True
@@ -358,18 +378,39 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="mortgage_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Expense',
-                                    'description': f"Mortgage Payment" + (f" - {notes}" if notes else ""),
-                                    'category': 'Housing',
-                                    'payment_method': payment_method
-                                }
-                                transaction_id = DatabaseService.add_transaction(transaction)
-                                st.success(f"✅ Mortgage Payment added: ${amount:.2f}")
-                                st.session_state.show_mortgage_form = False
-                                st.rerun()
+                                # Input validation
+                                if amount <= 0:
+                                    st.error("Amount must be greater than zero")
+                                elif not transaction_date:
+                                    st.error("Date is required")
+                                else:
+                                    try:
+                                        date_str = transaction_date.strftime('%Y-%m-%d')
+                                        
+                                        # Check for duplicates
+                                        if AddTransactionPage._check_duplicate_transaction("Mortgage Payment", amount, date_str, "Housing"):
+                                            st.warning(f"⚠️ Similar Mortgage Payment already exists for {date_str}")
+                                        else:
+                                            transaction = {
+                                                'date': date_str,
+                                                'amount': float(amount),
+                                                'type': 'Expense',
+                                                'description': f"Mortgage Payment" + (f" - {notes}" if notes else ""),
+                                                'category': 'Housing',
+                                                'payment_method': payment_method
+                                            }
+                                            transaction_id = DatabaseService.add_transaction(transaction)
+                                            st.success(f"✅ Mortgage Payment added: ${amount:.2f}")
+                                            
+                                            # Clear all session states
+                                            for key in list(st.session_state.keys()):
+                                                if key.startswith(('show_', 'cached_')):
+                                                    del st.session_state[key]
+                                            
+                                            st.rerun()
+                                    except Exception as e:
+                                        st.error("Failed to add transaction. Please try again.")
+                                        print(f"Transaction error: {str(e)}")  # Log for debugging
                 
                 if st.button("🏢 HOA", use_container_width=True, key="hoa_btn"):
                     st.session_state.show_hoa_form = True
@@ -531,18 +572,47 @@ class AddTransactionPage:
                                     st.rerun()
                             with col_add:
                                 if st.button("Add", type="primary", key="utilities_add"):
-                                    transaction = {
-                                        'date': transaction_date.strftime('%Y-%m-%d'),
-                                        'amount': float(amount),
-                                        'type': 'Expense',
-                                        'description': f"{utility_type} Bill" + (f" - {notes}" if notes else ""),
-                                        'category': 'Utilities',
-                                        'payment_method': payment_method
-                                    }
-                                    transaction_id = DatabaseService.add_transaction(transaction)
-                                    st.success(f"✅ {utility_type} added: ${amount:.2f}")
-                                    st.session_state.show_utilities_form = False
-                                    st.rerun()
+                                    # Input validation
+                                    if amount <= 0:
+                                        st.error("Amount must be greater than zero")
+                                    elif not transaction_date:
+                                        st.error("Date is required")
+                                    else:
+                                        try:
+                                            # Check for duplicates
+                                            existing_transactions = DatabaseService.get_transactions()
+                                            date_str = transaction_date.strftime('%Y-%m-%d')
+                                            
+                                            duplicate_found = any(
+                                                txn.get('date') == date_str and 
+                                                utility_type in txn.get('description', '') and
+                                                txn.get('category') == 'Utilities'
+                                                for txn in existing_transactions
+                                            )
+                                            
+                                            if duplicate_found:
+                                                st.warning(f"⚠️ {utility_type} bill already exists for this date")
+                                            else:
+                                                transaction = {
+                                                    'date': date_str,
+                                                    'amount': float(amount),
+                                                    'type': 'Expense',
+                                                    'description': f"{utility_type} Bill" + (f" - {notes}" if notes else ""),
+                                                    'category': 'Utilities',
+                                                    'payment_method': payment_method
+                                                }
+                                                transaction_id = DatabaseService.add_transaction(transaction)
+                                                st.success(f"✅ {utility_type} added: ${amount:.2f}")
+                                                
+                                                # Clear all session states
+                                                for key in list(st.session_state.keys()):
+                                                    if key.startswith(('show_', 'cached_')):
+                                                        del st.session_state[key]
+                                                
+                                                st.rerun()
+                                        except Exception as e:
+                                            st.error("Failed to add utility bill. Please try again.")
+                                            print(f"Utility transaction error: {str(e)}")  # Log for debugging
                 
                 if st.button("💎 Jewelry", use_container_width=True, key="jewelry_btn"):
                     st.session_state.show_jewelry_form = True
@@ -604,18 +674,38 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="car_loan_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Expense',
-                                    'description': f"Car Loan Payment" + (f" - {notes}" if notes else ""),
-                                    'category': 'Transportation',
-                                    'payment_method': payment_method
-                                }
-                                transaction_id = DatabaseService.add_transaction(transaction)
-                                st.success(f"✅ Car Loan Payment added: ${amount:.2f}")
-                                st.session_state.show_car_loan_form = False
-                                st.rerun()
+                                if amount <= 0:
+                                    st.error("Amount must be greater than zero")
+                                elif not transaction_date:
+                                    st.error("Date is required")
+                                else:
+                                    try:
+                                        date_str = transaction_date.strftime('%Y-%m-%d')
+                                        
+                                        # Check for duplicates
+                                        if AddTransactionPage._check_duplicate_transaction("Car Loan Payment", amount, date_str, "Transportation"):
+                                            st.warning(f"⚠️ Similar Car Loan Payment already exists for {date_str}")
+                                        else:
+                                            transaction = {
+                                                'date': date_str,
+                                                'amount': float(amount),
+                                                'type': 'Expense',
+                                                'description': f"Car Loan Payment" + (f" - {notes}" if notes else ""),
+                                                'category': 'Transportation',
+                                                'payment_method': payment_method
+                                            }
+                                            transaction_id = DatabaseService.add_transaction(transaction)
+                                            st.success(f"✅ Car Loan Payment added: ${amount:.2f}")
+                                            
+                                            # Clear all session states
+                                            for key in list(st.session_state.keys()):
+                                                if key.startswith(('show_', 'cached_')):
+                                                    del st.session_state[key]
+                                            
+                                            st.rerun()
+                                    except Exception as e:
+                                        st.error("Failed to add transaction. Please try again.")
+                                        print(f"Car loan transaction error: {str(e)}")
             
             with col2:
                 if st.button("🚙 Car Insurance", use_container_width=True, key="car_insurance_btn"):
@@ -1006,6 +1096,53 @@ class AddTransactionPage:
                                 st.session_state.show_401k_roth_form = False
                                 st.rerun()
         
+        # Settings section
+        with st.expander("⚙️ Settings & Customization"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Custom Categories**")
+                new_category = st.text_input("Add Category", placeholder="e.g., Pet Care")
+                if st.button("Add Category", key="add_category"):
+                    if new_category.strip():
+                        AddTransactionPage._add_custom_category(new_category.strip())
+                        st.success(f"✅ Added category: {new_category}")
+                        st.rerun()
+                
+                # Show existing custom categories
+                custom_categories = AddTransactionPage._get_custom_categories()
+                if custom_categories:
+                    st.markdown("**Your Categories:**")
+                    for cat in custom_categories:
+                        col_cat, col_del = st.columns([3, 1])
+                        with col_cat:
+                            st.text(cat)
+                        with col_del:
+                            if st.button("🗑️", key=f"del_cat_{cat}"):
+                                AddTransactionPage._remove_custom_category(cat)
+                                st.rerun()
+            
+            with col2:
+                st.markdown("**Custom Payment Methods**")
+                new_payment = st.text_input("Add Payment Method", placeholder="e.g., PayPal")
+                if st.button("Add Payment Method", key="add_payment"):
+                    if new_payment.strip():
+                        AddTransactionPage._add_custom_payment_method(new_payment.strip())
+                        st.success(f"✅ Added payment method: {new_payment}")
+                        st.rerun()
+                
+                # Default payment method preference
+                st.markdown("**Default Payment Method**")
+                all_payment_methods = AddTransactionPage._get_all_payment_methods()
+                default_payment = st.selectbox(
+                    "Select default",
+                    all_payment_methods,
+                    index=0 if "Bank Transfer" in all_payment_methods else 0
+                )
+                if st.button("Save Default", key="save_default"):
+                    AddTransactionPage._save_default_payment_method(default_payment)
+                    st.success(f"✅ Default payment method: {default_payment}")
+        
         # Manual entry form
         st.subheader("Manual Entry")
         
@@ -1019,28 +1156,46 @@ class AddTransactionPage:
             
             with col2:
                 description = st.text_input("Description", placeholder="Enter description...")
-                category = st.selectbox("Category", [
-                    "Salary", "Investment", "Tax", "Retirement", "Healthcare",
-                    "Housing", "Transportation", "Utilities", "Shopping", 
-                    "Credit Card", "Savings", "Transfer", "Food", "Entertainment", "Other"
-                ])
-                payment_method = st.selectbox("Payment Method", [
-                    "Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"
-                ])
+                # Use custom categories and payment methods
+                all_categories = AddTransactionPage._get_all_categories()
+                category = st.selectbox("Category", all_categories)
+                
+                all_payment_methods = AddTransactionPage._get_all_payment_methods()
+                default_payment = AddTransactionPage._get_default_payment_method()
+                default_index = all_payment_methods.index(default_payment) if default_payment in all_payment_methods else 0
+                payment_method = st.selectbox("Payment Method", all_payment_methods, index=default_index)
             
             if st.form_submit_button("Add Transaction", type="primary", use_container_width=True):
-                transaction = {
-                    'date': transaction_date.strftime('%Y-%m-%d'),
-                    'amount': float(amount),
-                    'type': transaction_type,
-                    'description': description,
-                    'category': category,
-                    'payment_method': payment_method
-                }
-                
-                transaction_id = DatabaseService.add_transaction(transaction)
-                st.success(f"✅ Transaction added successfully! (ID: {transaction_id})")
-                st.rerun()
+                # Input validation
+                if not description.strip():
+                    st.error("Description is required")
+                elif amount <= 0:
+                    st.error("Amount must be greater than zero")
+                elif not transaction_date:
+                    st.error("Date is required")
+                else:
+                    try:
+                        transaction = {
+                            'date': transaction_date.strftime('%Y-%m-%d'),
+                            'amount': float(amount),
+                            'type': transaction_type,
+                            'description': description.strip(),
+                            'category': category,
+                            'payment_method': payment_method
+                        }
+                        
+                        transaction_id = DatabaseService.add_transaction(transaction)
+                        st.success(f"✅ Transaction added successfully!")
+                        
+                        # Clear all session states
+                        for key in list(st.session_state.keys()):
+                            if key.startswith(('show_', 'cached_')):
+                                del st.session_state[key]
+                        
+                        st.rerun()
+                    except Exception as e:
+                        st.error("Failed to add transaction. Please try again.")
+                        print(f"Manual transaction error: {str(e)}")  # Log for debugging
         
 
         
@@ -1194,6 +1349,105 @@ class AddTransactionPage:
                             st.error(f"Error adding transaction: {str(e)}")
     
     @staticmethod
+    def _check_duplicate_transaction(description, amount, date_str, category):
+        """Check for duplicate transactions"""
+        try:
+            existing_transactions = DatabaseService.get_transactions()
+            
+            for txn in existing_transactions:
+                if (txn.get('date') == date_str and 
+                    txn.get('category') == category and
+                    abs(float(txn.get('amount', 0)) - amount) < 0.01 and
+                    description.lower() in txn.get('description', '').lower()):
+                    return True
+            return False
+        except Exception:
+            return False
+    
+    @staticmethod
+    def _add_custom_category(category):
+        """Add custom category to user preferences"""
+        try:
+            categories = AddTransactionPage._get_custom_categories()
+            if category not in categories:
+                categories.append(category)
+                DatabaseService.save_user_preference('custom_categories', categories)
+        except Exception as e:
+            print(f"Error adding category: {e}")
+    
+    @staticmethod
+    def _remove_custom_category(category):
+        """Remove custom category from user preferences"""
+        try:
+            categories = AddTransactionPage._get_custom_categories()
+            if category in categories:
+                categories.remove(category)
+                DatabaseService.save_user_preference('custom_categories', categories)
+        except Exception as e:
+            print(f"Error removing category: {e}")
+    
+    @staticmethod
+    def _get_custom_categories():
+        """Get user's custom categories"""
+        try:
+            return DatabaseService.get_user_preference('custom_categories', [])
+        except Exception:
+            return []
+    
+    @staticmethod
+    def _get_all_categories():
+        """Get all categories including custom ones"""
+        default_categories = [
+            "Salary", "Investment", "Tax", "Retirement", "Healthcare",
+            "Housing", "Transportation", "Utilities", "Shopping", 
+            "Credit Card", "Savings", "Transfer", "Food", "Entertainment", "Other"
+        ]
+        custom_categories = AddTransactionPage._get_custom_categories()
+        return default_categories + custom_categories
+    
+    @staticmethod
+    def _add_custom_payment_method(payment_method):
+        """Add custom payment method to user preferences"""
+        try:
+            methods = AddTransactionPage._get_custom_payment_methods()
+            if payment_method not in methods:
+                methods.append(payment_method)
+                DatabaseService.save_user_preference('custom_payment_methods', methods)
+        except Exception as e:
+            print(f"Error adding payment method: {e}")
+    
+    @staticmethod
+    def _get_custom_payment_methods():
+        """Get user's custom payment methods"""
+        try:
+            return DatabaseService.get_user_preference('custom_payment_methods', [])
+        except Exception:
+            return []
+    
+    @staticmethod
+    def _get_all_payment_methods():
+        """Get all payment methods including custom ones"""
+        default_methods = ["Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"]
+        custom_methods = AddTransactionPage._get_custom_payment_methods()
+        return default_methods + custom_methods
+    
+    @staticmethod
+    def _save_default_payment_method(payment_method):
+        """Save user's default payment method"""
+        try:
+            DatabaseService.save_user_preference('default_payment_method', payment_method)
+        except Exception as e:
+            print(f"Error saving default payment method: {e}")
+    
+    @staticmethod
+    def _get_default_payment_method():
+        """Get user's default payment method"""
+        try:
+            return DatabaseService.get_user_preference('default_payment_method', 'Bank Transfer')
+        except Exception:
+            return 'Bank Transfer'
+    
+    @staticmethod
     def _apply_custom_css():
         """Apply custom CSS for professional Add Transaction page styling"""
         st.markdown("""
@@ -1205,6 +1459,12 @@ class AddTransactionPage:
             margin-bottom: 1.5rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .stExpander:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
         }
         
         .stExpander > div:first-child {
@@ -1230,12 +1490,29 @@ class AddTransactionPage:
             color: #374151;
             font-weight: 500;
             font-size: 0.875rem;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 0.75rem 1rem;
             margin: 0.25rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stButton > button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .stButton > button:hover::before {
+            left: 100%;
         }
         
         .stButton > button:hover {
@@ -1258,6 +1535,18 @@ class AddTransactionPage:
             padding: 1.5rem;
             margin: 1rem 0;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         /* Input field styling */
@@ -1268,6 +1557,7 @@ class AddTransactionPage:
             border-radius: 6px !important;
             border: 1px solid #d1d5db !important;
             font-size: 0.875rem !important;
+            transition: all 0.2s ease !important;
         }
         
         /* Number input controls styling */
@@ -1293,6 +1583,7 @@ class AddTransactionPage:
         .stDateInput > div > div > input:focus {
             border-color: #059669 !important;
             box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1) !important;
+            transform: scale(1.01);
         }
         
         /* Label styling */
@@ -1334,8 +1625,13 @@ class AddTransactionPage:
         
         .stForm button[kind="primary"]:hover {
             background-color: #047857 !important;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 16px rgba(5, 150, 105, 0.3);
+        }
+        
+        .stForm button[kind="primary"]:active {
+            transform: translateY(0) scale(0.98);
+            transition: all 0.1s ease;
         }
         
         /* Primary button styling */
@@ -1355,6 +1651,12 @@ class AddTransactionPage:
             background-color: #f9fafb !important;
             color: #374151 !important;
             border-color: #9ca3af !important;
+            transform: translateY(-1px);
+        }
+        
+        .stForm button:not([kind="primary"]):active {
+            transform: translateY(0);
+            transition: all 0.1s ease;
         }
         
         /* Column spacing */
