@@ -127,18 +127,18 @@ class FinanceApp:
                     current_page = st.session_state.current_page
                     selected_page = None
                     
-                    # Overview section
+                    # Overview section - Main dashboard and financial summary pages
                     st.markdown('<div class="nav-section"><div class="nav-label">OVERVIEW</div></div>', unsafe_allow_html=True)
                     if st.sidebar.button("Dashboard", key="nav_Dashboard", use_container_width=True, type="primary" if current_page == "Dashboard" else "secondary"):
                         selected_page = "Dashboard"
                         st.session_state.current_page = "Dashboard"
-                        st.rerun()
+                        st.rerun()  # Force page refresh to update active button styling
                     if st.sidebar.button("Net Worth", key="nav_Net_Worth", use_container_width=True, type="primary" if current_page == "Net Worth" else "secondary"):
                         selected_page = "Net Worth"
                         st.session_state.current_page = "Net Worth"
                         st.rerun()
                     
-                    # Transactions section
+                    # Transactions section - Core transaction management functionality
                     st.markdown('<div class="nav-section"><div class="nav-label">TRANSACTIONS</div></div>', unsafe_allow_html=True)
                     if st.sidebar.button("View Transactions", key="nav_View_Transactions", use_container_width=True, type="primary" if current_page == "View Transactions" else "secondary"):
                         selected_page = "View Transactions"
@@ -149,14 +149,14 @@ class FinanceApp:
                         st.session_state.current_page = "Add Transaction"
                         st.rerun()
                     
-                    # Planning section
+                    # Planning section - Budget and financial planning tools
                     st.markdown('<div class="nav-section"><div class="nav-label">PLANNING</div></div>', unsafe_allow_html=True)
                     if st.sidebar.button("Budget", key="nav_Budget", use_container_width=True, type="primary" if current_page == "Budget" else "secondary"):
                         selected_page = "Budget"
                         st.session_state.current_page = "Budget"
                         st.rerun()
                     
-                    # Tools section
+                    # Tools section - Administrative and utility functions
                     st.markdown('<div class="nav-section"><div class="nav-label">TOOLS</div></div>', unsafe_allow_html=True)
                     if st.sidebar.button("Upload Documents", key="nav_Upload_Documents", use_container_width=True, type="primary" if current_page == "Upload Documents" else "secondary"):
                         selected_page = "Upload Documents"
@@ -219,7 +219,14 @@ class FinanceApp:
     
     @staticmethod
     def _apply_sidebar_css():
-        """Apply custom CSS for styling the sidebar."""
+        """Apply custom CSS for professional sidebar styling.
+        
+        Creates enterprise-grade navigation with:
+        - Dark gradient background
+        - High contrast text for accessibility
+        - Professional button states (active/inactive/hover)
+        - Consistent spacing and typography
+        """
         st.markdown("""
         <style>
         /* Sidebar container */

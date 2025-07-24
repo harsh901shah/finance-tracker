@@ -125,7 +125,10 @@ class TransactionPage:
         # Apply filters
         filtered_df = df.copy()
         
-        # Apply search filter
+        # Apply filters in order: search -> type -> category -> amount -> date
+        # This order optimizes performance by reducing dataset size progressively
+        
+        # Apply search filter across multiple fields
         if search_term:
             search_mask = (
                 filtered_df['description'].str.contains(search_term, case=False, na=False) |
@@ -282,7 +285,11 @@ class TransactionPage:
     
     @staticmethod
     def _show_transaction_summary(df):
-        """Show detailed transaction summary"""
+        """Display comprehensive transaction analytics and breakdowns.
+        
+        Provides summary views by transaction type, category, and time period
+        to help users understand their spending patterns.
+        """
         st.subheader("📊 Transaction Summary")
         
         # Summary by type
