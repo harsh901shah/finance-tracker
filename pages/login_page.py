@@ -68,7 +68,7 @@ class LoginPage:
             # Apply custom CSS for styling
             cls._apply_custom_css()
             
-            # Remove default page padding
+            # Override Streamlit default container padding for full-width layout
             st.markdown("""
                 <style>
                 .block-container {
@@ -79,7 +79,7 @@ class LoginPage:
                 </style>
             """, unsafe_allow_html=True)
             
-            # Page layout - use a container to control width
+            # Use Streamlit container and columns for responsive layout
             with st.container():
                 # Header with logo - compact design
                 st.markdown('<header class="landing-header"><div class="logo-container"><h1 class="logo">Finance<span>Tracker</span></h1></div></header>', unsafe_allow_html=True)
@@ -129,7 +129,7 @@ class LoginPage:
                                 st.session_state.auth_view = "login"
                                 st.rerun()
                 
-                # Testimonials section - directly after main content with no gap
+                # Place testimonials/quote after main content for better visual flow
                 UIComponents.testimonials_section()
                 
                 # Random finance quote
@@ -214,6 +214,7 @@ class LoginPage:
         """
         st.markdown("""
         <style>
+        /* Custom styles for layout optimization and mobile responsiveness */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
         :root {

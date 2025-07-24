@@ -182,6 +182,7 @@ class UIComponents:
         Displays buttons for authentication with Google and Apple accounts,
         along with a divider for the email login option.
         """
+        # Use inline SVG for sharper rendering and no external dependencies
         st.markdown('''
         <div class="social-login">
             <button class="social-btn google-btn">
