@@ -1,0 +1,31 @@
+# Example configuration file
+# Copy this file to config.yaml and update with your settings
+
+# Database settings
+database:
+  path: finance_tracker.db
+
+# User settings
+user:
+  name: Your Name
+  currency: USD
+
+# Categories for transactions
+categories:
+  - Food
+  - Transportation
+  - Housing
+  - Utilities
+  - Entertainment
+  - Healthcare
+  - Education
+  - Shopping
+  - Other
+
+# Payment methods
+payment_methods:
+  - Cash
+  - Credit Card
+  - Debit Card
+  - Bank Transfer
+  - Other

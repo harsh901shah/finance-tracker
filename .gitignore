@@ -1,0 +1,57 @@
+# Database files
+*.db
+finance_tracker.db
+*.sqlite
+*.sqlite3
+
+# Statement data and financial records
+*.json
+networth.json
+budget.json
+transactions.json
+accounts.yaml
+
+# Credentials and configuration
+.env
+config.yaml
+credentials.json
+secrets.yaml
+*.key
+*.pem
+
+# Cache and temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Build and distribution
+dist/
+build/
+*.egg-info/
+
+# Temporary files created during processing
+temp.pdf
+temp_*
