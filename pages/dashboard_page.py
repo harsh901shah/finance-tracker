@@ -4,8 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta, date
 import calendar
-import random
 from services.financial_data_service import TransactionService
+from components.dashboard_analytics import DashboardAnalytics, DashboardFilters
 
 class DashboardPage:
     """Dashboard page for the finance tracker application"""
@@ -20,107 +20,8 @@ class DashboardPage:
         st.markdown("<h1 class='page-title'>Dashboard</h1>", unsafe_allow_html=True)
         st.markdown("<p class='page-subtitle'>Your financial overview</p>", unsafe_allow_html=True)
         
-        # Get current month and year
-        current_date = datetime.now()
-        current_month = current_date.month
-        current_year = current_date.year
-        month_name = calendar.month_name[current_month]
-        
-        # Advanced filters
-        col1, col2, col3 = st.columns([2, 1, 1])
-        with col1:
-            selected_period = st.selectbox(
-                "Period",
-                [f"{month_name} {current_year}", "This Week", "Last Week", "Last 3 Months", "Last 6 Months", "Year to Date", "Last 12 Months", "This Year", "Custom"],
-                index=0
-            )
-        
-        with col2:
-            # Transaction type filter
-            transaction_types = st.multiselect(
-                "Transaction Type",
-                ["Income", "Expense", "Investment", "Transfer"],
-                default=["Income", "Expense"]
-            )
-        
-        with col3:
-            # Category filter
-            all_categories = ["All Categories", "Salary", "Investment", "Tax", "Retirement", "Healthcare", 
-                            "Housing", "Transportation", "Utilities", "Shopping", "Credit Card", 
-                            "Savings", "Transfer", "Food", "Entertainment", "Other"]
-            selected_categories = st.selectbox(
-                "Category",
-                all_categories,
-                index=0
-            )
-        
-        # Additional filters row
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if selected_period == "Custom":
-                # Calculate first day of current month and today's date for default range
-                first_day = date(current_year, current_month, 1)
-                today = date.today()
-                
-                # Date range input
-                date_range = st.date_input(
-                    "Select date range",
-                    value=(first_day, today),
-                    min_value=date(2015, 1, 1),
-                    max_value=today
-                )
-        
-        with col2:
-            # Payment method filter
-            payment_methods = st.multiselect(
-                "Payment Method",
-                ["Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"],
-                default=[]
-            )
-        
-        with col3:
-            # Apply button
-            apply_filter = st.button("Apply Filters", type="primary", use_container_width=True)
-            if selected_period != "Custom":
-                apply_filter = True  # Auto-apply for non-custom periods
-        
-        # Determine date range and filters based on selection
-        date_filter = None
-        filters = {
-            'transaction_types': transaction_types,
-            'categories': [selected_categories] if selected_categories != "All Categories" else [],
-            'payment_methods': payment_methods
-        }
-        
-        if selected_period == "Custom" and 'date_range' in locals() and len(date_range) == 2 and apply_filter:
-            start_date, end_date = date_range
-            date_filter = (start_date, end_date)
-            st.success(f"📅 Showing data from {start_date} to {end_date}")
-        elif selected_period != "Custom" and apply_filter:
-            today = date.today()
-            if selected_period == "This Week":
-                start_date = today - timedelta(days=today.weekday())
-                date_filter = (start_date, today)
-            elif selected_period == "Last Week":
-                start_date = today - timedelta(days=today.weekday() + 7)
-                end_date = today - timedelta(days=today.weekday() + 1)
-                date_filter = (start_date, end_date)
-            elif selected_period == "Last 3 Months":
-                start_date = today - timedelta(days=90)
-                date_filter = (start_date, today)
-            elif selected_period == "Last 6 Months":
-                start_date = today - timedelta(days=180)
-                date_filter = (start_date, today)
-            elif selected_period == "Year to Date":
-                start_date = date(today.year, 1, 1)
-                date_filter = (start_date, today)
-            elif selected_period == "Last 12 Months":
-                start_date = today - timedelta(days=365)
-                date_filter = (start_date, today)
-            elif selected_period == "This Year":
-                start_date = date(today.year, 1, 1)
-                end_date = date(today.year, 12, 31)
-                date_filter = (start_date, min(end_date, today))
+        # Render filter controls
+        date_filter, filters, apply_filter = DashboardFilters.render_filter_controls()
         
         # Get transactions data (force refresh)
         transactions = cls._get_transactions_data()
@@ -132,14 +33,14 @@ class DashboardPage:
         # Only load data if filter is applied
         if apply_filter:
             # Get real financial data with all filters
-            current_month_data = cls._get_filtered_data(date_filter, filters)
+            current_month_data = DashboardAnalytics.get_filtered_data(date_filter, filters)
         else:
             # Show placeholder when filters not applied
             current_month_data = {'income': 0, 'expenses': 0}
             st.info("👆 Configure your filters and click 'Apply Filters' to view data")
         
         # Get trend data for comparison
-        trends = cls._calculate_trends(date_filter, filters) if apply_filter else {}
+        trends = DashboardAnalytics.calculate_trends(date_filter, filters) if apply_filter else {}
         
         with col1:
             income_trend = trends.get('income_trend', 0)
@@ -167,7 +68,7 @@ class DashboardPage:
         col1, col2, col3, col4 = st.columns(4)
         
         # Get additional analytics
-        analytics = cls._get_additional_analytics(date_filter, filters) if apply_filter else {}
+        analytics = DashboardAnalytics.get_additional_analytics(date_filter, filters) if apply_filter else {}
         
         with col1:
             transfers = analytics.get('transfers', 0)
