@@ -41,32 +41,67 @@ class DashboardPage:
                 first_day = date(current_year, current_month, 1)
                 today = date.today()
                 
-                # Ensure the default date range is within allowed bounds
+                # Date range input
                 date_range = st.date_input(
                     "Select date range",
                     value=(first_day, today),
                     min_value=date(2015, 1, 1),
                     max_value=today
                 )
+                
+                # Apply button
+                apply_filter = st.button("Apply Filter", type="primary", use_container_width=True)
+            else:
+                apply_filter = True  # Auto-apply for non-custom periods
         
-        # Get transactions data
+        # Determine date range based on selection and apply button
+        date_filter = None
+        if selected_period == "Custom" and 'date_range' in locals() and len(date_range) == 2 and apply_filter:
+            start_date, end_date = date_range
+            date_filter = (start_date, end_date)
+            st.success(f"📅 Showing data from {start_date} to {end_date}")
+        elif selected_period != "Custom":
+            # Handle other period selections
+            if selected_period == "Last 3 Months":
+                end_date = date.today()
+                start_date = end_date - timedelta(days=90)
+                date_filter = (start_date, end_date)
+            elif selected_period == "Last 6 Months":
+                end_date = date.today()
+                start_date = end_date - timedelta(days=180)
+                date_filter = (start_date, end_date)
+            # Add more period options as needed
+        
+        # Get transactions data (force refresh)
         transactions = cls._get_transactions_data()
         
         # Summary cards
         st.markdown("<div class='summary-cards'>", unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
         
+        # Only load data if filter is applied or it's not custom period
+        if (selected_period == "Custom" and apply_filter) or selected_period != "Custom":
+            # Get real financial data with date filter
+            current_month_data = cls._get_current_month_data(date_filter)
+        else:
+            # Show placeholder when custom period is selected but not applied
+            current_month_data = {'income': 0, 'expenses': 0}
+            if selected_period == "Custom":
+                st.info("👆 Select your date range and click 'Apply Filter' to view data")
+        
         with col1:
-            cls._summary_card("Income", "$5,240", "+12% vs last month", "positive")
+            cls._summary_card("Income", f"${current_month_data['income']:,.2f}", "+12% vs last month", "positive")
         
         with col2:
-            cls._summary_card("Expenses", "$3,890", "-5% vs last month", "negative")
+            cls._summary_card("Expenses", f"${current_month_data['expenses']:,.2f}", "-5% vs last month", "negative")
         
         with col3:
-            cls._summary_card("Net Income", "$1,350", "+8% vs last month", "positive")
+            net_income = current_month_data['income'] - current_month_data['expenses']
+            cls._summary_card("Net Income", f"${net_income:,.2f}", "+8% vs last month", "positive" if net_income >= 0 else "negative")
         
         with col4:
-            cls._summary_card("Savings Rate", "25.8%", "+2.1% vs last month", "positive")
+            savings_rate = (net_income / current_month_data['income'] * 100) if current_month_data['income'] > 0 else 0
+            cls._summary_card("Savings Rate", f"{savings_rate:.1f}%", "+2.1% vs last month", "positive")
         
         st.markdown("</div>", unsafe_allow_html=True)
         
@@ -74,8 +109,8 @@ class DashboardPage:
         st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
         st.markdown("<h2>Cash Flow</h2>", unsafe_allow_html=True)
         
-        # Create cash flow data
-        cash_flow_data = cls._generate_cash_flow_data()
+        # Get real cash flow data
+        cash_flow_data = cls._get_real_cash_flow_data()
         
         # Create cash flow chart
         fig = cls._create_cash_flow_chart(cash_flow_data)
@@ -90,8 +125,8 @@ class DashboardPage:
             st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
             st.markdown("<h2>Spending by Category</h2>", unsafe_allow_html=True)
             
-            # Create spending by category data
-            category_data = cls._generate_category_data()
+            # Get real spending by category data
+            category_data = cls._get_real_category_data()
             
             # Create spending by category chart
             fig = cls._create_category_chart(category_data)
@@ -103,8 +138,8 @@ class DashboardPage:
             st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
             st.markdown("<h2>Budget Progress</h2>", unsafe_allow_html=True)
             
-            # Create budget progress data
-            budget_data = cls._generate_budget_data()
+            # Get real budget progress data
+            budget_data = cls._get_real_budget_data()
             
             # Create budget progress chart
             fig = cls._create_budget_chart(budget_data)
@@ -115,8 +150,8 @@ class DashboardPage:
         st.markdown("<div class='transactions-container'>", unsafe_allow_html=True)
         st.markdown("<h2>Recent Transactions</h2>", unsafe_allow_html=True)
         
-        # Create recent transactions data
-        transactions_data = cls._generate_transactions_data()
+        # Get real recent transactions data
+        transactions_data = cls._get_real_recent_transactions()
         
         # Display transactions table
         cls._display_transactions_table(transactions_data)
@@ -142,48 +177,130 @@ class DashboardPage:
     def _get_transactions_data():
         """Get transactions data from the database"""
         try:
-            return TransactionService.load_transactions()
+            # Force fresh data load
+            transactions = TransactionService.load_transactions()
+            print(f"Dashboard loaded {len(transactions)} transactions")
+            return transactions
         except Exception as e:
             st.error(f"Error loading transactions: {str(e)}")
             return []
     
     @staticmethod
-    def _generate_cash_flow_data():
-        """Generate sample cash flow data"""
-        # Get the last 6 months
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=180)
-        
-        # Generate monthly data
-        months = []
-        income = []
-        expenses = []
-        
-        current_date = start_date
-        while current_date <= end_date:
-            month_name = current_date.strftime("%b")
-            months.append(month_name)
+    def _get_current_month_data(date_filter=None):
+        """Get financial data for specified date range or current month"""
+        try:
+            transactions = TransactionService.load_transactions()
             
-            # Generate random income and expenses
-            month_income = random.randint(4000, 6000)
-            month_expenses = random.randint(3000, 5000)
+            if date_filter:
+                start_date, end_date = date_filter
+                start_str = start_date.strftime('%Y-%m-%d')
+                end_str = end_date.strftime('%Y-%m-%d')
+            else:
+                current_month = datetime.now().strftime('%Y-%m')
             
-            income.append(month_income)
-            expenses.append(month_expenses)
+            income = 0
+            expenses = 0
             
-            # Move to next month
-            current_date = current_date.replace(day=28) + timedelta(days=4)
-            current_date = current_date.replace(day=1)
-        
-        # Create DataFrame
-        df = pd.DataFrame({
-            'Month': months,
-            'Income': income,
-            'Expenses': expenses,
-            'Net': [i - e for i, e in zip(income, expenses)]
-        })
-        
-        return df
+            for transaction in transactions:
+                transaction_date = transaction.get('date', '')
+                
+                # Filter by date range
+                if date_filter:
+                    if not (start_str <= transaction_date <= end_str):
+                        continue
+                else:
+                    if not transaction_date.startswith(current_month):
+                        continue
+                
+                amount = float(transaction.get('amount', 0))
+                transaction_type = transaction.get('type', '').lower().strip()
+                
+                if transaction_type in ['income']:
+                    income += abs(amount)
+                elif transaction_type in ['expense']:
+                    expenses += abs(amount)
+            
+            return {'income': income, 'expenses': expenses}
+        except Exception as e:
+            print(f"Error getting current month data: {e}")
+            return {'income': 0, 'expenses': 0}
+    
+    @staticmethod
+    def _get_real_cash_flow_data():
+        """Get real cash flow data from transactions"""
+        try:
+            transactions = TransactionService.load_transactions()
+            
+            if not transactions:
+                return pd.DataFrame({
+                    'Month': [],
+                    'Income': [],
+                    'Expenses': [],
+                    'Net': []
+                })
+            
+            # Get last 6 months
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=180)
+            
+            # Initialize monthly data
+            monthly_data = {}
+            current_date = start_date
+            while current_date <= end_date:
+                month_key = current_date.strftime('%Y-%m')
+                month_name = current_date.strftime('%b %Y')
+                monthly_data[month_key] = {
+                    'month_name': month_name,
+                    'income': 0,
+                    'expenses': 0
+                }
+                current_date = current_date.replace(day=28) + timedelta(days=4)
+                current_date = current_date.replace(day=1)
+            
+            # Process transactions
+            for transaction in transactions:
+                try:
+                    transaction_date = datetime.strptime(transaction.get('date', ''), '%Y-%m-%d')
+                    month_key = transaction_date.strftime('%Y-%m')
+                    
+                    if month_key in monthly_data:
+                        amount = float(transaction.get('amount', 0))
+                        transaction_type = transaction.get('type', '').lower().strip()
+                        
+                        if transaction_type in ['income']:
+                            monthly_data[month_key]['income'] += abs(amount)
+                        elif transaction_type in ['expense']:
+                            monthly_data[month_key]['expenses'] += abs(amount)
+                except (ValueError, TypeError):
+                    continue
+            
+            # Create DataFrame
+            months = []
+            income = []
+            expenses = []
+            
+            for month_key in sorted(monthly_data.keys()):
+                data = monthly_data[month_key]
+                months.append(data['month_name'])
+                income.append(data['income'])
+                expenses.append(data['expenses'])
+            
+            df = pd.DataFrame({
+                'Month': months,
+                'Income': income,
+                'Expenses': expenses,
+                'Net': [i - e for i, e in zip(income, expenses)]
+            })
+            
+            return df
+            
+        except Exception:
+            return pd.DataFrame({
+                'Month': [],
+                'Income': [],
+                'Expenses': [],
+                'Net': []
+            })
     
     @staticmethod
     def _create_cash_flow_chart(data):
@@ -249,17 +366,32 @@ class DashboardPage:
         return fig
     
     @staticmethod
-    def _generate_category_data():
-        """Generate sample spending by category data"""
-        categories = ['Housing', 'Food', 'Transportation', 'Entertainment', 'Utilities', 'Shopping', 'Healthcare']
-        amounts = [1200, 650, 450, 320, 280, 490, 500]
-        
-        df = pd.DataFrame({
-            'Category': categories,
-            'Amount': amounts
-        })
-        
-        return df
+    def _get_real_category_data():
+        """Get real spending by category data"""
+        try:
+            transactions = TransactionService.load_transactions()
+            current_month = datetime.now().strftime('%Y-%m')
+            
+            category_spending = {}
+            for transaction in transactions:
+                if (transaction.get('date', '').startswith(current_month) and 
+                    transaction.get('type', '').lower() in ['expense']):
+                    category = transaction.get('category', 'Other')
+                    amount = float(transaction.get('amount', 0))
+                    category_spending[category] = category_spending.get(category, 0) + abs(amount)
+            
+            if not category_spending:
+                return pd.DataFrame({'Category': [], 'Amount': []})
+            
+            df = pd.DataFrame({
+                'Category': list(category_spending.keys()),
+                'Amount': list(category_spending.values())
+            })
+            
+            return df
+            
+        except Exception:
+            return pd.DataFrame({'Category': [], 'Amount': []})
     
     @staticmethod
     def _create_category_chart(data):
@@ -294,20 +426,53 @@ class DashboardPage:
         return fig
     
     @staticmethod
-    def _generate_budget_data():
-        """Generate sample budget data"""
-        categories = ['Housing', 'Food', 'Transportation', 'Entertainment', 'Utilities', 'Shopping', 'Healthcare']
-        spent = [1200, 580, 320, 290, 250, 420, 380]
-        budget = [1200, 600, 400, 300, 300, 500, 400]
-        
-        df = pd.DataFrame({
-            'Category': categories,
-            'Spent': spent,
-            'Budget': budget,
-            'Percentage': [s/b*100 for s, b in zip(spent, budget)]
-        })
-        
-        return df
+    def _get_real_budget_data():
+        """Get real budget progress data"""
+        try:
+            from services.financial_data_service import BudgetService
+            
+            budget_data = BudgetService.load_budget()
+            if not budget_data:
+                return pd.DataFrame({'Category': [], 'Spent': [], 'Budget': [], 'Percentage': []})
+            
+            transactions = TransactionService.load_transactions()
+            current_month = datetime.now().strftime('%Y-%m')
+            
+            # Calculate spending by category
+            spending_by_category = {}
+            for transaction in transactions:
+                if (transaction.get('date', '').startswith(current_month) and 
+                    transaction.get('type', '').lower() in ['expense']):
+                    category = transaction.get('category', 'Other')
+                    amount = float(transaction.get('amount', 0))
+                    spending_by_category[category] = spending_by_category.get(category, 0) + abs(amount)
+            
+            # Create budget progress data
+            categories = []
+            spent = []
+            budget = []
+            percentages = []
+            
+            for category, budget_amount in budget_data.items():
+                spent_amount = spending_by_category.get(category, 0)
+                percentage = (spent_amount / budget_amount * 100) if budget_amount > 0 else 0
+                
+                categories.append(category)
+                spent.append(spent_amount)
+                budget.append(budget_amount)
+                percentages.append(percentage)
+            
+            df = pd.DataFrame({
+                'Category': categories,
+                'Spent': spent,
+                'Budget': budget,
+                'Percentage': percentages
+            })
+            
+            return df
+            
+        except Exception:
+            return pd.DataFrame({'Category': [], 'Spent': [], 'Budget': [], 'Percentage': []})
     
     @staticmethod
     def _create_budget_chart(data):
@@ -354,35 +519,34 @@ class DashboardPage:
         return fig
     
     @staticmethod
-    def _generate_transactions_data():
-        """Generate sample transactions data"""
-        categories = ['Housing', 'Food', 'Transportation', 'Entertainment', 'Utilities', 'Shopping', 'Healthcare']
-        merchants = [
-            'Apartment Rental', 'Grocery Store', 'Gas Station', 'Movie Theater', 
-            'Electric Company', 'Online Store', 'Pharmacy', 'Restaurant', 'Coffee Shop'
-        ]
-        
-        transactions = []
-        
-        # Generate 10 random transactions
-        for i in range(10):
-            date = datetime.now() - timedelta(days=random.randint(0, 15))
-            category = random.choice(categories)
-            merchant = random.choice(merchants)
-            amount = round(random.uniform(10, 200), 2)
+    def _get_real_recent_transactions():
+        """Get real recent transactions data"""
+        try:
+            transactions = TransactionService.load_transactions()
             
-            transactions.append({
-                'date': date.strftime('%Y-%m-%d'),
-                'category': category,
-                'merchant': merchant,
-                'amount': amount,
-                'type': 'Expense'
-            })
-        
-        # Sort by date (newest first)
-        transactions.sort(key=lambda x: x['date'], reverse=True)
-        
-        return transactions
+            if not transactions:
+                return []
+            
+            # Format and sort transactions (newest first)
+            formatted_transactions = []
+            for transaction in transactions:
+                amount = float(transaction.get('amount', 0))
+                transaction_type = transaction.get('type', '').lower()
+                
+                formatted_transactions.append({
+                    'date': transaction.get('date', ''),
+                    'category': transaction.get('category', 'Other'),
+                    'merchant': transaction.get('description', 'Unknown'),
+                    'amount': abs(amount),
+                    'type': transaction.get('type', 'Expense')
+                })
+            
+            # Sort by date (newest first) and limit to 10 most recent
+            formatted_transactions.sort(key=lambda x: x['date'], reverse=True)
+            return formatted_transactions[:10]
+            
+        except Exception:
+            return []
     
     @staticmethod
     def _display_transactions_table(transactions):
