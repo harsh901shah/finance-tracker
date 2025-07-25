@@ -5,6 +5,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, date
 from services.financial_data_service import TransactionService
+from utils.logger import AppLogger
+from utils.transaction_filter import TransactionFilter
 
 class DashboardAnalytics:
     """Handles dashboard analytics and data processing"""
@@ -13,128 +15,20 @@ class DashboardAnalytics:
     def get_filtered_data(date_filter=None, filters=None):
         """Get financial data with advanced filtering"""
         try:
-            transactions = TransactionService.load_transactions()
-            
-            if date_filter:
-                start_date, end_date = date_filter
-                start_str = start_date.strftime('%Y-%m-%d')
-                end_str = end_date.strftime('%Y-%m-%d')
-            else:
-                current_month = datetime.now().strftime('%Y-%m')
-            
-            income = 0
-            expenses = 0
-            
-            for transaction in transactions:
-                transaction_date = transaction.get('date', '')
-                transaction_type = transaction.get('type', '')
-                transaction_category = transaction.get('category', '')
-                transaction_payment = transaction.get('payment_method', '')
-                
-                # Apply all filters
-                if date_filter:
-                    if not (start_str <= transaction_date <= end_str):
-                        continue
-                else:
-                    if not transaction_date.startswith(current_month):
-                        continue
-                
-                if filters and filters.get('transaction_types') and transaction_type not in filters['transaction_types']:
-                    continue
-                if filters and filters.get('categories') and transaction_category not in filters['categories']:
-                    continue
-                if filters and filters.get('payment_methods') and transaction_payment not in filters['payment_methods']:
-                    continue
-                
-                amount = float(transaction.get('amount', 0))
-                transaction_type_lower = transaction_type.lower().strip()
-                
-                if transaction_type_lower in ['income']:
-                    income += abs(amount)
-                elif transaction_type_lower in ['expense']:
-                    expenses += abs(amount)
-            
-            return {'income': income, 'expenses': expenses}
+            filtered_transactions = TransactionFilter.get_filtered_transactions(date_filter, filters)
+            return TransactionFilter.calculate_financial_summary(filtered_transactions)
         except Exception as e:
-            print(f"Error getting filtered data: {e}")
+            AppLogger.log_error("Error getting filtered financial data", e, show_user=False)
             return {'income': 0, 'expenses': 0}
     
     @staticmethod
     def get_additional_analytics(date_filter=None, filters=None):
         """Get additional analytics for enhanced summary cards"""
         try:
-            transactions = TransactionService.load_transactions()
-            
-            if date_filter:
-                start_date, end_date = date_filter
-                start_str = start_date.strftime('%Y-%m-%d')
-                end_str = end_date.strftime('%Y-%m-%d')
-            else:
-                current_month = datetime.now().strftime('%Y-%m')
-            
-            transfers = 0
-            transfer_count = 0
-            category_spending = {}
-            payment_method_count = {}
-            transaction_amounts = []
-            
-            for transaction in transactions:
-                transaction_date = transaction.get('date', '')
-                transaction_type = transaction.get('type', '')
-                transaction_category = transaction.get('category', '')
-                transaction_payment = transaction.get('payment_method', '')
-                
-                # Apply filters
-                if date_filter:
-                    if not (start_str <= transaction_date <= end_str):
-                        continue
-                else:
-                    if not transaction_date.startswith(current_month):
-                        continue
-                
-                if filters and filters.get('transaction_types') and transaction_type not in filters['transaction_types']:
-                    continue
-                if filters and filters.get('categories') and transaction_category not in filters['categories']:
-                    continue
-                if filters and filters.get('payment_methods') and transaction_payment not in filters['payment_methods']:
-                    continue
-                
-                amount = abs(float(transaction.get('amount', 0)))
-                transaction_amounts.append(amount)
-                
-                # Transfer analysis
-                if transaction_type.lower() == 'transfer':
-                    transfers += amount
-                    transfer_count += 1
-                
-                # Category spending (expenses only)
-                if transaction_type.lower() == 'expense':
-                    category_spending[transaction_category] = category_spending.get(transaction_category, 0) + amount
-                
-                # Payment method usage
-                payment_method_count[transaction_payment] = payment_method_count.get(transaction_payment, 0) + 1
-            
-            # Top category
-            top_category = max(category_spending.items(), key=lambda x: x[1]) if category_spending else ('N/A', 0)
-            
-            # Top payment method
-            top_payment = max(payment_method_count.items(), key=lambda x: x[1]) if payment_method_count else ('N/A', 0)
-            
-            # Average transaction
-            avg_transaction = sum(transaction_amounts) / len(transaction_amounts) if transaction_amounts else 0
-            
-            return {
-                'transfers': transfers,
-                'transfer_count': transfer_count,
-                'top_category': top_category[0],
-                'top_category_amount': top_category[1],
-                'avg_transaction': avg_transaction,
-                'transaction_count': len(transaction_amounts),
-                'top_payment_method': top_payment[0],
-                'top_payment_count': top_payment[1]
-            }
+            filtered_transactions = TransactionFilter.get_filtered_transactions(date_filter, filters)
+            return TransactionFilter.calculate_analytics(filtered_transactions)
         except Exception as e:
-            print(f"Error getting additional analytics: {e}")
+            AppLogger.log_error("Error getting additional analytics", e, show_user=False)
             return {}
     
     @staticmethod
@@ -192,7 +86,7 @@ class DashboardAnalytics:
                 'has_previous_data': has_previous_data
             }
         except Exception as e:
-            print(f"Error calculating trends: {e}")
+            AppLogger.log_error("Error calculating trends", e, show_user=False)
             return {}
 
 class DashboardFilters:

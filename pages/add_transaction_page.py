@@ -3,6 +3,7 @@ from datetime import datetime, date
 from services.database_service import DatabaseService
 from components.transaction_forms import TransactionFormHandler, UtilitiesFormHandler
 from components.user_preferences import UserPreferencesManager
+from config.app_config import AppConfig
 
 class AddTransactionPage:
     @staticmethod
@@ -905,8 +906,9 @@ class AddTransactionPage:
                                 st.session_state.show_401k_roth_form = False
                                 st.rerun()
         
-        # Settings section
-        UserPreferencesManager.render_settings_panel()
+        # Settings section - only show if customization features are enabled
+        if AppConfig.FEATURES.get('custom_categories', True) or AppConfig.FEATURES.get('custom_payment_methods', True):
+            UserPreferencesManager.render_settings_panel()
         
         # Manual entry form
         st.subheader("Manual Entry")
@@ -949,7 +951,12 @@ class AddTransactionPage:
                             'payment_method': payment_method
                         }
                         
-                        transaction_id = DatabaseService.add_transaction(transaction)
+                        # Get current user ID - require authentication
+                        user_id = AuthMiddleware.get_current_user_id()
+                        if not user_id:
+                            st.error("🔒 Please login to add transactions")
+                            return
+                        transaction_id = DatabaseService.add_transaction(transaction, user_id)
                         st.success(f"✅ Transaction added successfully!")
                         
                         # Clear all session states

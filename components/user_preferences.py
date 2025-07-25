@@ -1,9 +1,11 @@
 """
-User preferences and customization components
+User preferences and customization components - SECURE VERSION
 """
 import streamlit as st
 from services.database_service import DatabaseService
 from config.app_config import AppConfig
+from utils.logger import AppLogger
+from utils.auth_middleware import AuthMiddleware
 
 class UserPreferencesManager:
     """Manages user preferences and customization"""
@@ -11,14 +13,24 @@ class UserPreferencesManager:
     @staticmethod
     def render_settings_panel():
         """Render the settings and customization panel"""
+        # Only show if at least one customization feature is enabled
+        if not (AppConfig.FEATURES.get('custom_categories', True) or AppConfig.FEATURES.get('custom_payment_methods', True)):
+            return
+            
         with st.expander("⚙️ Settings & Customization"):
             col1, col2 = st.columns(2)
             
             with col1:
-                UserPreferencesManager._render_category_settings()
+                if AppConfig.FEATURES.get('custom_categories', True):
+                    UserPreferencesManager._render_category_settings()
+                else:
+                    st.info("📊 Custom categories are disabled")
             
             with col2:
-                UserPreferencesManager._render_payment_settings()
+                if AppConfig.FEATURES.get('custom_payment_methods', True):
+                    UserPreferencesManager._render_payment_settings()
+                else:
+                    st.info("📊 Custom payment methods are disabled")
     
     @staticmethod
     def _render_category_settings():
@@ -72,36 +84,50 @@ class UserPreferencesManager:
     def add_custom_category(category):
         """Add custom category to user preferences"""
         try:
+            user_id = AuthMiddleware.get_current_user_id()
+            if not user_id:
+                st.error("🔒 Please login to manage categories")
+                return
+                
             categories = UserPreferencesManager.get_custom_categories()
             if category not in categories:
                 categories.append(category)
-                DatabaseService.save_user_preference('custom_categories', categories)
+                DatabaseService.save_user_preference('custom_categories', categories, user_id)
         except Exception as e:
-            print(f"Error adding category: {e}")
+            AppLogger.log_error("Error adding custom category", e, show_user=True)
     
     @staticmethod
     def remove_custom_category(category):
         """Remove custom category from user preferences"""
         try:
+            user_id = AuthMiddleware.get_current_user_id()
+            if not user_id:
+                st.error("🔒 Please login to manage categories")
+                return
+                
             categories = UserPreferencesManager.get_custom_categories()
             if category in categories:
                 categories.remove(category)
-                DatabaseService.save_user_preference('custom_categories', categories)
+                DatabaseService.save_user_preference('custom_categories', categories, user_id)
         except Exception as e:
-            print(f"Error removing category: {e}")
+            AppLogger.log_error("Error removing custom category", e, show_user=True)
     
     @staticmethod
     def get_custom_categories():
         """Get user's custom categories"""
         try:
-            return DatabaseService.get_user_preference('custom_categories', [])
-        except Exception:
+            user_id = AuthMiddleware.get_current_user_id()
+            if not user_id:
+                return []
+            return DatabaseService.get_user_preference('custom_categories', user_id, [])
+        except Exception as e:
+            AppLogger.log_error("Error getting custom categories", e, show_user=False)
             return []
     
     @staticmethod
     def get_all_categories():
         """Get all categories including custom ones"""
-        custom_categories = UserPreferencesManager.get_custom_categories()
+        custom_categories = UserPreferencesManager.get_custom_categories() or []
         return AppConfig.DEFAULT_CATEGORIES + custom_categories
     
     # Payment method management
@@ -109,39 +135,56 @@ class UserPreferencesManager:
     def add_custom_payment_method(payment_method):
         """Add custom payment method to user preferences"""
         try:
+            user_id = AuthMiddleware.get_current_user_id()
+            if not user_id:
+                st.error("🔒 Please login to manage payment methods")
+                return
+                
             methods = UserPreferencesManager.get_custom_payment_methods()
             if payment_method not in methods:
                 methods.append(payment_method)
-                DatabaseService.save_user_preference('custom_payment_methods', methods)
+                DatabaseService.save_user_preference('custom_payment_methods', methods, user_id)
         except Exception as e:
-            print(f"Error adding payment method: {e}")
+            AppLogger.log_error("Error adding custom payment method", e, show_user=True)
     
     @staticmethod
     def get_custom_payment_methods():
         """Get user's custom payment methods"""
         try:
-            return DatabaseService.get_user_preference('custom_payment_methods', [])
-        except Exception:
+            user_id = AuthMiddleware.get_current_user_id()
+            if not user_id:
+                return []
+            return DatabaseService.get_user_preference('custom_payment_methods', user_id, [])
+        except Exception as e:
+            AppLogger.log_error("Error getting custom payment methods", e, show_user=False)
             return []
     
     @staticmethod
     def get_all_payment_methods():
         """Get all payment methods including custom ones"""
-        custom_methods = UserPreferencesManager.get_custom_payment_methods()
+        custom_methods = UserPreferencesManager.get_custom_payment_methods() or []
         return AppConfig.DEFAULT_PAYMENT_METHODS + custom_methods
     
     @staticmethod
     def save_default_payment_method(payment_method):
         """Save user's default payment method"""
         try:
-            DatabaseService.save_user_preference('default_payment_method', payment_method)
+            user_id = AuthMiddleware.get_current_user_id()
+            if not user_id:
+                st.error("🔒 Please login to save preferences")
+                return
+            DatabaseService.save_user_preference('default_payment_method', payment_method, user_id)
         except Exception as e:
-            print(f"Error saving default payment method: {e}")
+            AppLogger.log_error("Error saving default payment method", e, show_user=True)
     
     @staticmethod
     def get_default_payment_method():
         """Get user's default payment method"""
         try:
-            return DatabaseService.get_user_preference('default_payment_method', 'Bank Transfer')
-        except Exception:
+            user_id = AuthMiddleware.get_current_user_id()
+            if not user_id:
+                return 'Bank Transfer'
+            return DatabaseService.get_user_preference('default_payment_method', user_id, 'Bank Transfer')
+        except Exception as e:
+            AppLogger.log_error("Error getting default payment method", e, show_user=False)
             return 'Bank Transfer'

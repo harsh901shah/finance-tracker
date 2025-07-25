@@ -134,8 +134,8 @@ class DatabaseService:
 
     # Transaction methods
     @classmethod
-    def add_transaction(cls, transaction: Dict[str, Any]) -> int:
-        """Add a transaction to the database"""
+    def add_transaction(cls, transaction: Dict[str, Any], user_id: str) -> int:
+        """Add a transaction to the database with user isolation"""
         conn = None
         try:
             # Validate required fields
@@ -145,9 +145,17 @@ class DatabaseService:
                 raise ValueError("Transaction amount is required")
             if 'type' not in transaction:
                 raise ValueError("Transaction type is required")
+            if not user_id:
+                raise ValueError("User ID is required")
                 
             conn = cls.get_connection()
             cursor = conn.cursor()
+            
+            # Add user_id column if it doesn't exist
+            cursor.execute("PRAGMA table_info(transactions)")
+            columns = [column[1] for column in cursor.fetchall()]
+            if 'user_id' not in columns:
+                cursor.execute('ALTER TABLE transactions ADD COLUMN user_id TEXT')
             
             # Extract standard fields
             date = transaction.get('date')
@@ -165,8 +173,8 @@ class DatabaseService:
             additional_data_json = json.dumps(additional_data) if additional_data else None
             
             cursor.execute('''
-            INSERT INTO transactions (date, amount, type, description, category, payment_method, additional_data)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO transactions (date, amount, type, description, category, payment_method, additional_data, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 date,
                 amount,
@@ -174,7 +182,8 @@ class DatabaseService:
                 description,
                 category,
                 payment_method,
-                additional_data_json
+                additional_data_json,
+                user_id
             ))
             
             transaction_id = cursor.lastrowid
@@ -196,12 +205,26 @@ class DatabaseService:
                 conn.close()
     
     @classmethod
-    def get_transactions(cls) -> List[Dict[str, Any]]:
-        """Get all transactions from the database"""
+    def get_transactions(cls, user_id: str = None) -> List[Dict[str, Any]]:
+        """Get transactions from the database, filtered by user if provided"""
         conn = cls.get_connection()
         cursor = conn.cursor()
         
-        cursor.execute('SELECT * FROM transactions ORDER BY date DESC')
+        # Add user_id column if it doesn't exist
+        cursor.execute("PRAGMA table_info(transactions)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' not in columns:
+            cursor.execute('ALTER TABLE transactions ADD COLUMN user_id TEXT')
+            # Set existing transactions to default user for migration
+            cursor.execute('UPDATE transactions SET user_id = ? WHERE user_id IS NULL', ('default_user',))
+            conn.commit()
+        
+        if user_id:
+            cursor.execute('SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC', (user_id,))
+        else:
+            # Don't return any transactions if no user_id provided
+            return []
+            
         transactions = [dict(row) for row in cursor.fetchall()]
         
         conn.close()
@@ -455,8 +478,8 @@ class DatabaseService:
     
     # User preferences methods
     @classmethod
-    def save_user_preference(cls, key: str, value: Any) -> bool:
-        """Save user preference to database"""
+    def save_user_preference(cls, key: str, value: Any, user_id: str) -> bool:
+        """Save user preference to database with user isolation"""
         conn = None
         try:
             conn = cls.get_connection()
@@ -465,9 +488,11 @@ class DatabaseService:
             # Create preferences table if it doesn't exist
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_preferences (
-                key TEXT PRIMARY KEY,
+                key TEXT NOT NULL,
+                user_id TEXT NOT NULL,
                 value TEXT NOT NULL,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (key, user_id)
             )
             ''')
             
@@ -476,9 +501,9 @@ class DatabaseService:
             value_json = json.dumps(value)
             
             cursor.execute('''
-            INSERT OR REPLACE INTO user_preferences (key, value, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP)
-            ''', (key, value_json))
+            INSERT OR REPLACE INTO user_preferences (key, user_id, value, updated_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            ''', (key, user_id, value_json))
             
             conn.commit()
             return True
@@ -492,14 +517,14 @@ class DatabaseService:
                 conn.close()
     
     @classmethod
-    def get_user_preference(cls, key: str, default_value: Any = None) -> Any:
-        """Get user preference from database"""
+    def get_user_preference(cls, key: str, user_id: str, default_value: Any = None) -> Any:
+        """Get user preference from database for specific user"""
         conn = None
         try:
             conn = cls.get_connection()
             cursor = conn.cursor()
             
-            cursor.execute('SELECT value FROM user_preferences WHERE key = ?', (key,))
+            cursor.execute('SELECT value FROM user_preferences WHERE key = ? AND user_id = ?', (key, user_id))
             result = cursor.fetchone()
             
             if result:

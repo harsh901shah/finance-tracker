@@ -6,6 +6,8 @@ import re
 from datetime import date
 from services.database_service import DatabaseService
 from config.app_config import AppConfig
+from utils.logger import AppLogger
+from utils.auth_middleware import AuthMiddleware
 
 class TransactionFormHandler:
     """Handles all transaction form operations"""
@@ -64,7 +66,9 @@ class TransactionFormHandler:
                 'payment_method': payment_method
             }
             
-            transaction_id = DatabaseService.add_transaction(transaction)
+            # Get current user ID or use default for now
+            user_id = AuthMiddleware.get_current_user_id() or 'default_user'
+            transaction_id = DatabaseService.add_transaction(transaction, user_id)
             st.success(f"✅ {description} added: ${amount:.2f}")
             
             # Clear session states
@@ -72,14 +76,15 @@ class TransactionFormHandler:
             st.rerun()
             
         except Exception as e:
-            st.error("Failed to add transaction. Please try again.")
-            print(f"Transaction error: {str(e)}")
+            AppLogger.log_error("Failed to add transaction", e, show_user=True)
     
     @staticmethod
     def _check_duplicate(description, amount, date_str, category):
         """Check for duplicate transactions"""
         try:
-            existing_transactions = DatabaseService.get_transactions()
+            # Get current user ID or use default for now
+            user_id = AuthMiddleware.get_current_user_id() or 'default_user'
+            existing_transactions = DatabaseService.get_transactions(user_id)
             
             for txn in existing_transactions:
                 if (txn.get('date') == date_str and 
@@ -88,14 +93,23 @@ class TransactionFormHandler:
                     description.lower() in txn.get('description', '').lower()):
                     return True
             return False
-        except Exception:
+        except Exception as e:
+            AppLogger.log_error("Error checking duplicate transaction", e, show_user=False)
             return False
     
     @staticmethod
     def _clear_session_states():
-        """Clear all form-related session states"""
+        """Clear transaction form-related session states only"""
+        form_prefixes = (
+            'show_mortgage_form', 'show_utilities_form', 'show_salary_form',
+            'show_car_loan_form', 'show_car_insurance_form', 'show_gas_form',
+            'show_savings_transfer_form', 'show_robinhood_form', 'show_savings_withdraw_form',
+            'show_gold_investment_form', 'show_money_india_form', 'show_401k_roth_form',
+            'cached_transaction_data'
+        )
+        
         for key in list(st.session_state.keys()):
-            if key.startswith(('show_', 'cached_')):
+            if any(key.startswith(prefix) for prefix in form_prefixes):
                 del st.session_state[key]
 
 class UtilitiesFormHandler:
@@ -200,12 +214,9 @@ class UtilitiesFormHandler:
             st.success(f"✅ {utility_type} added: ${amount:.2f}")
             
             # Clear session states
-            for key in list(st.session_state.keys()):
-                if key.startswith(('show_', 'cached_')):
-                    del st.session_state[key]
+            TransactionFormHandler._clear_session_states()
             
             st.rerun()
             
         except Exception as e:
-            st.error("Failed to add utility bill. Please try again.")
-            print(f"Utility transaction error: {str(e)}")
+            AppLogger.log_error("Failed to add utility bill", e, show_user=True)

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, date
 import calendar
 from services.financial_data_service import TransactionService
 from components.dashboard_analytics import DashboardAnalytics, DashboardFilters
+from config.app_config import AppConfig
 
 class DashboardPage:
     """Dashboard page for the finance tracker application"""
@@ -68,8 +69,8 @@ class DashboardPage:
         # Second row - Additional insights
         col1, col2, col3, col4 = st.columns(4)
         
-        # Get additional analytics
-        analytics = DashboardAnalytics.get_additional_analytics(date_filter, filters) if apply_filter else {}
+        # Get additional analytics - only if advanced analytics is enabled
+        analytics = DashboardAnalytics.get_additional_analytics(date_filter, filters) if (apply_filter and AppConfig.FEATURES.get('advanced_analytics', True)) else {}
         
         with col1:
             transfers = analytics.get('transfers', 0)
@@ -121,18 +122,23 @@ class DashboardPage:
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             st.markdown("</div>", unsafe_allow_html=True)
         
-        # Budget progress
+        # Budget progress - only show if budget tracking is enabled
         with col2:
-            st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
-            st.markdown("<h2>Budget Progress</h2>", unsafe_allow_html=True)
-            
-            # Get real budget progress data
-            budget_data = cls._get_real_budget_data()
-            
-            # Create budget progress chart
-            fig = cls._create_budget_chart(budget_data)
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            st.markdown("</div>", unsafe_allow_html=True)
+            if AppConfig.FEATURES.get('budget_tracking', True):
+                st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+                st.markdown("<h2>Budget Progress</h2>", unsafe_allow_html=True)
+                
+                # Get real budget progress data
+                budget_data = cls._get_real_budget_data()
+                
+                # Create budget progress chart
+                fig = cls._create_budget_chart(budget_data)
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+                st.info("📊 Budget tracking is currently disabled")
+                st.markdown("</div>", unsafe_allow_html=True)
         
         # Recent transactions
         st.markdown("<div class='transactions-container'>", unsafe_allow_html=True)
