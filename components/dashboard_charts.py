@@ -261,7 +261,13 @@ class DashboardCharts:
             )
         else:
             for i, row in data.iterrows():
-            color = '#4CAF50' if row['Percentage'] <= 100 else '#F44336'
+            # Use configurable budget colors based on percentage
+            if row['Percentage'] <= 90:
+                color = AppConfig.BUDGET_COLORS['under_budget']
+            elif row['Percentage'] <= 100:
+                color = AppConfig.BUDGET_COLORS['at_budget']
+            else:
+                color = AppConfig.BUDGET_COLORS['over_budget']
             
             fig.add_trace(go.Bar(
                 x=[row['Percentage']], y=[row['Category']], orientation='h',

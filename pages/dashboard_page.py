@@ -44,25 +44,26 @@ class DashboardPage:
         
         with col1:
             income_trend = trends.get('income_trend', 0)
-            trend_text = f"{income_trend:+.1f}% vs prev period" if income_trend != 0 else "No prev data"
-            cls._summary_card("Income", f"${current_month_data['income']:,.2f}", trend_text, "positive" if income_trend >= 0 else "negative")
+            has_trend_data = trends.get('has_previous_data', False)
+            trend_text = f"{income_trend:+.1f}% vs prev period" if has_trend_data else "First period"
+            cls._summary_card("Income", f"${current_month_data['income']:,.2f}", trend_text, "neutral" if not has_trend_data else ("positive" if income_trend >= 0 else "negative"))
         
         with col2:
             expense_trend = trends.get('expense_trend', 0)
-            trend_text = f"{expense_trend:+.1f}% vs prev period" if expense_trend != 0 else "No prev data"
-            cls._summary_card("Expenses", f"${current_month_data['expenses']:,.2f}", trend_text, "negative" if expense_trend > 0 else "positive")
+            trend_text = f"{expense_trend:+.1f}% vs prev period" if has_trend_data else "First period"
+            cls._summary_card("Expenses", f"${current_month_data['expenses']:,.2f}", trend_text, "neutral" if not has_trend_data else ("negative" if expense_trend > 0 else "positive"))
         
         with col3:
             net_income = current_month_data['income'] - current_month_data['expenses']
             net_trend = trends.get('net_trend', 0)
-            trend_text = f"{net_trend:+.1f}% vs prev period" if net_trend != 0 else "No prev data"
-            cls._summary_card("Net Income", f"${net_income:,.2f}", trend_text, "positive" if net_income >= 0 else "negative")
+            trend_text = f"{net_trend:+.1f}% vs prev period" if has_trend_data else "First period"
+            cls._summary_card("Net Income", f"${net_income:,.2f}", trend_text, "neutral" if not has_trend_data else ("positive" if net_income >= 0 else "negative"))
         
         with col4:
             savings_rate = (net_income / current_month_data['income'] * 100) if current_month_data['income'] > 0 else 0
             savings_trend = trends.get('savings_trend', 0)
-            trend_text = f"{savings_trend:+.1f}% vs prev period" if savings_trend != 0 else "No prev data"
-            cls._summary_card("Savings Rate", f"{savings_rate:.1f}%", trend_text, "positive" if savings_trend >= 0 else "negative")
+            trend_text = f"{savings_trend:+.1f}% vs prev period" if has_trend_data else "First period"
+            cls._summary_card("Savings Rate", f"{savings_rate:.1f}%", trend_text, "neutral" if not has_trend_data else ("positive" if savings_trend >= 0 else "negative"))
         
         # Second row - Additional insights
         col1, col2, col3, col4 = st.columns(4)
@@ -660,7 +661,7 @@ class DashboardPage:
             # Calculate percentage changes
             def calc_change(current, previous):
                 if previous == 0:
-                    return 0 if current == 0 else 100
+                    return 0  # No previous data to compare
                 return ((current - previous) / previous) * 100
             
             current_income = current_data['income']

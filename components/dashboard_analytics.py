@@ -142,7 +142,12 @@ class DashboardAnalytics:
         """Calculate trends by comparing current period with previous period"""
         try:
             if not date_filter:
-                return {}
+                # Use current month as default when no date_filter provided
+                today = date.today()
+                start_date = date(today.year, today.month, 1)
+                end_date = today
+                date_filter = (start_date, end_date)
+
             
             start_date, end_date = date_filter
             period_days = (end_date - start_date).days
@@ -174,11 +179,17 @@ class DashboardAnalytics:
             prev_net = prev_income - prev_expenses
             prev_savings_rate = (prev_net / prev_income * 100) if prev_income > 0 else 0
             
+            # Check if there's meaningful previous data
+            has_previous_data = prev_income > 0 or prev_expenses > 0
+            
+
+            
             return {
                 'income_trend': calc_change(current_income, prev_income),
                 'expense_trend': calc_change(current_expenses, prev_expenses),
                 'net_trend': calc_change(current_net, prev_net),
-                'savings_trend': calc_change(current_savings_rate, prev_savings_rate)
+                'savings_trend': calc_change(current_savings_rate, prev_savings_rate),
+                'has_previous_data': has_previous_data
             }
         except Exception as e:
             print(f"Error calculating trends: {e}")

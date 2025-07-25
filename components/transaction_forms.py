@@ -122,17 +122,29 @@ class UtilitiesFormHandler:
                     
                     # Use regex patterns for robust utility type detection
                     utility_patterns = {
-                        'Electric': r'\b(electric|electricity|power|energy)\b',
-                        'Phone': r'\b(phone|mobile|cellular|cell)\b',
-                        'Wifi/Internet': r'\b(wifi|internet|broadband|web)\b',
-                        'Water': r'\b(water|h2o)\b',
-                        'Gas': r'\b(gas|natural gas)\b'
+                        'Electric': r'\b(electric|electricity|power|energy|elec|pwr)\b',
+                        'Phone': r'\b(phone|mobile|cellular|cell|tel|telephone)\b',
+                        'Wifi/Internet': r'\b(wifi|internet|broadband|web|net|isp|wi-fi)\b',
+                        'Water': r'\b(water|h2o|aqua|sewer|sewage)\b',
+                        'Gas': r'\b(gas|natural gas|lng|propane)\b'
                     }
                     
+                    # Find all matching utilities (allow multiple matches)
+                    matched_utilities = []
                     for utility_type, pattern in utility_patterns.items():
                         if re.search(pattern, desc):
-                            existing_utilities.add(utility_type)
-                            break
+                            matched_utilities.append(utility_type)
+                    
+                    # Add the most specific match or first match if multiple
+                    if matched_utilities:
+                        # Prioritize more specific matches
+                        priority_order = ['Electric', 'Gas', 'Water', 'Phone', 'Wifi/Internet']
+                        for priority_util in priority_order:
+                            if priority_util in matched_utilities:
+                                existing_utilities.add(priority_util)
+                                break
+                        else:
+                            existing_utilities.add(matched_utilities[0])
             
             # Available utility options from config
             all_utilities = list(AppConfig.UTILITY_TYPES.keys())

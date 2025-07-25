@@ -1,5 +1,13 @@
 """
 Application configuration constants
+
+Notes:
+- DEFAULT_CATEGORIES: Core transaction categories, extensible via user preferences
+- DEFAULT_PAYMENT_METHODS: Standard payment options, customizable per user
+- UTILITY_TYPES: Supported utility types with suggested default amounts
+- CHART_COLORS: Consistent color palette across all visualizations
+- BUDGET_COLORS: Configurable colors for budget status indicators
+- FEATURES: Toggle switches for optional functionality
 """
 
 class AppConfig:
@@ -29,8 +37,23 @@ class AppConfig:
         "Gas": 90.0
     }
     
-    # Chart colors
+    # Chart color palette for consistent theming
     CHART_COLORS = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#3F51B5', '#009688']
+    
+    # Budget chart colors for different states
+    BUDGET_COLORS = {
+        'under_budget': '#4CAF50',  # Green for under budget
+        'over_budget': '#F44336',   # Red for over budget
+        'at_budget': '#FF9800'      # Orange for at budget (90-100%)
+    }
+    
+    # Feature toggles for enabling/disabling functionality
+    FEATURES = {
+        'custom_categories': True,
+        'custom_payment_methods': True,
+        'budget_tracking': True,
+        'advanced_analytics': True
+    }
     
     # Date periods for filtering
     DATE_PERIODS = [
