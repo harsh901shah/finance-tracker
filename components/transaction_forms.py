@@ -2,8 +2,10 @@
 Modular transaction form components
 """
 import streamlit as st
+import re
 from datetime import date
 from services.database_service import DatabaseService
+from config.app_config import AppConfig
 
 class TransactionFormHandler:
     """Handles all transaction form operations"""
@@ -116,16 +118,24 @@ class UtilitiesFormHandler:
             for txn in transactions:
                 if (txn.get('date', '').startswith(selected_month) and 
                     txn.get('category') == 'Utilities'):
-                    desc = txn.get('description', '')
-                    if 'Electric' in desc:
-                        existing_utilities.add('Electric')
-                    elif 'Phone' in desc:
-                        existing_utilities.add('Phone')
-                    elif 'Wifi' in desc or 'Internet' in desc:
-                        existing_utilities.add('Wifi/Internet')
+                    desc = txn.get('description', '').lower()
+                    
+                    # Use regex patterns for robust utility type detection
+                    utility_patterns = {
+                        'Electric': r'\b(electric|electricity|power|energy)\b',
+                        'Phone': r'\b(phone|mobile|cellular|cell)\b',
+                        'Wifi/Internet': r'\b(wifi|internet|broadband|web)\b',
+                        'Water': r'\b(water|h2o)\b',
+                        'Gas': r'\b(gas|natural gas)\b'
+                    }
+                    
+                    for utility_type, pattern in utility_patterns.items():
+                        if re.search(pattern, desc):
+                            existing_utilities.add(utility_type)
+                            break
             
-            # Available utility options
-            all_utilities = ['Electric', 'Phone', 'Wifi/Internet']
+            # Available utility options from config
+            all_utilities = list(AppConfig.UTILITY_TYPES.keys())
             available_utilities = [u for u in all_utilities if u not in existing_utilities]
             
             if not available_utilities:
@@ -136,9 +146,8 @@ class UtilitiesFormHandler:
             else:
                 utility_type = st.selectbox("Utility Type", available_utilities, key=f"{form_key}_type")
                 
-                # Set default amounts
-                default_amounts = {'Electric': 120.0, 'Phone': 50.0, 'Wifi/Internet': 80.0}
-                default_amount = default_amounts.get(utility_type, 100.0)
+                # Set default amounts from config
+                default_amount = AppConfig.UTILITY_TYPES.get(utility_type, 100.0)
                 
                 amount = st.number_input("Amount ($)", value=default_amount, step=0.01, key=f"{form_key}_amount")
                 payment_method = st.selectbox("Payment Method", [

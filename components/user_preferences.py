@@ -3,6 +3,7 @@ User preferences and customization components
 """
 import streamlit as st
 from services.database_service import DatabaseService
+from config.app_config import AppConfig
 
 class UserPreferencesManager:
     """Manages user preferences and customization"""
@@ -100,13 +101,8 @@ class UserPreferencesManager:
     @staticmethod
     def get_all_categories():
         """Get all categories including custom ones"""
-        default_categories = [
-            "Salary", "Investment", "Tax", "Retirement", "Healthcare",
-            "Housing", "Transportation", "Utilities", "Shopping", 
-            "Credit Card", "Savings", "Transfer", "Food", "Entertainment", "Other"
-        ]
         custom_categories = UserPreferencesManager.get_custom_categories()
-        return default_categories + custom_categories
+        return AppConfig.DEFAULT_CATEGORIES + custom_categories
     
     # Payment method management
     @staticmethod
@@ -131,9 +127,8 @@ class UserPreferencesManager:
     @staticmethod
     def get_all_payment_methods():
         """Get all payment methods including custom ones"""
-        default_methods = ["Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"]
         custom_methods = UserPreferencesManager.get_custom_payment_methods()
-        return default_methods + custom_methods
+        return AppConfig.DEFAULT_PAYMENT_METHODS + custom_methods
     
     @staticmethod
     def save_default_payment_method(payment_method):

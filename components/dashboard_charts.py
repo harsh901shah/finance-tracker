@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from services.financial_data_service import TransactionService
+from config.app_config import AppConfig
 
 class DashboardCharts:
     """Handles all dashboard chart generation"""
@@ -163,6 +164,7 @@ class DashboardCharts:
                     category_spending[category] = category_spending.get(category, 0) + abs(amount)
             
             if not category_spending:
+                # Return empty DataFrame with info message handled by caller
                 return pd.DataFrame({'Category': [], 'Amount': []})
             
             return pd.DataFrame({
@@ -176,11 +178,21 @@ class DashboardCharts:
     @staticmethod
     def _create_category_chart(data):
         """Create spending by category chart using Plotly"""
-        colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#3F51B5', '#009688']
+        colors = AppConfig.CHART_COLORS
         
-        fig = go.Figure(data=[go.Pie(
-            labels=data['Category'], values=data['Amount'], hole=.4, marker_colors=colors
-        )])
+        # Handle empty data gracefully
+        if data.empty:
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No spending data available",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(size=16, color="#666666")
+            )
+        else:
+            fig = go.Figure(data=[go.Pie(
+                labels=data['Category'], values=data['Amount'], hole=.4, marker_colors=colors
+            )])
         
         fig.update_layout(
             margin=dict(l=20, r=20, t=20, b=20),
@@ -199,6 +211,7 @@ class DashboardCharts:
             
             budget_data = BudgetService.load_budget()
             if not budget_data:
+                # Return empty DataFrame with info message handled by caller
                 return pd.DataFrame({'Category': [], 'Spent': [], 'Budget': [], 'Percentage': []})
             
             transactions = TransactionService.load_transactions()
@@ -238,7 +251,16 @@ class DashboardCharts:
         """Create budget progress chart using Plotly"""
         fig = go.Figure()
         
-        for i, row in data.iterrows():
+        # Handle empty data gracefully
+        if data.empty:
+            fig.add_annotation(
+                text="No budget data available",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(size=16, color="#666666")
+            )
+        else:
+            for i, row in data.iterrows():
             color = '#4CAF50' if row['Percentage'] <= 100 else '#F44336'
             
             fig.add_trace(go.Bar(
@@ -288,9 +310,9 @@ class DashboardCharts:
     
     @staticmethod
     def _display_transactions_table(transactions):
-        """Display transactions in a table"""
+        """Display transactions in a table with graceful empty data handling"""
         if not transactions:
-            st.info("No recent transactions found.")
+            st.info("📊 No recent transactions found. Add some transactions to see them here!")
             return
         
         # Convert to DataFrame
