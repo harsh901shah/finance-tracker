@@ -4,8 +4,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta, date
 import calendar
-import random
 from services.financial_data_service import TransactionService
+from components.dashboard_analytics import DashboardAnalytics, DashboardFilters
+from config.app_config import AppConfig
 
 class DashboardPage:
     """Dashboard page for the finance tracker application"""
@@ -20,107 +21,8 @@ class DashboardPage:
         st.markdown("<h1 class='page-title'>Dashboard</h1>", unsafe_allow_html=True)
         st.markdown("<p class='page-subtitle'>Your financial overview</p>", unsafe_allow_html=True)
         
-        # Get current month and year
-        current_date = datetime.now()
-        current_month = current_date.month
-        current_year = current_date.year
-        month_name = calendar.month_name[current_month]
-        
-        # Advanced filters
-        col1, col2, col3 = st.columns([2, 1, 1])
-        with col1:
-            selected_period = st.selectbox(
-                "Period",
-                [f"{month_name} {current_year}", "This Week", "Last Week", "Last 3 Months", "Last 6 Months", "Year to Date", "Last 12 Months", "This Year", "Custom"],
-                index=0
-            )
-        
-        with col2:
-            # Transaction type filter
-            transaction_types = st.multiselect(
-                "Transaction Type",
-                ["Income", "Expense", "Investment", "Transfer"],
-                default=["Income", "Expense"]
-            )
-        
-        with col3:
-            # Category filter
-            all_categories = ["All Categories", "Salary", "Investment", "Tax", "Retirement", "Healthcare", 
-                            "Housing", "Transportation", "Utilities", "Shopping", "Credit Card", 
-                            "Savings", "Transfer", "Food", "Entertainment", "Other"]
-            selected_categories = st.selectbox(
-                "Category",
-                all_categories,
-                index=0
-            )
-        
-        # Additional filters row
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if selected_period == "Custom":
-                # Calculate first day of current month and today's date for default range
-                first_day = date(current_year, current_month, 1)
-                today = date.today()
-                
-                # Date range input
-                date_range = st.date_input(
-                    "Select date range",
-                    value=(first_day, today),
-                    min_value=date(2015, 1, 1),
-                    max_value=today
-                )
-        
-        with col2:
-            # Payment method filter
-            payment_methods = st.multiselect(
-                "Payment Method",
-                ["Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"],
-                default=[]
-            )
-        
-        with col3:
-            # Apply button
-            apply_filter = st.button("Apply Filters", type="primary", use_container_width=True)
-            if selected_period != "Custom":
-                apply_filter = True  # Auto-apply for non-custom periods
-        
-        # Determine date range and filters based on selection
-        date_filter = None
-        filters = {
-            'transaction_types': transaction_types,
-            'categories': [selected_categories] if selected_categories != "All Categories" else [],
-            'payment_methods': payment_methods
-        }
-        
-        if selected_period == "Custom" and 'date_range' in locals() and len(date_range) == 2 and apply_filter:
-            start_date, end_date = date_range
-            date_filter = (start_date, end_date)
-            st.success(f"📅 Showing data from {start_date} to {end_date}")
-        elif selected_period != "Custom" and apply_filter:
-            today = date.today()
-            if selected_period == "This Week":
-                start_date = today - timedelta(days=today.weekday())
-                date_filter = (start_date, today)
-            elif selected_period == "Last Week":
-                start_date = today - timedelta(days=today.weekday() + 7)
-                end_date = today - timedelta(days=today.weekday() + 1)
-                date_filter = (start_date, end_date)
-            elif selected_period == "Last 3 Months":
-                start_date = today - timedelta(days=90)
-                date_filter = (start_date, today)
-            elif selected_period == "Last 6 Months":
-                start_date = today - timedelta(days=180)
-                date_filter = (start_date, today)
-            elif selected_period == "Year to Date":
-                start_date = date(today.year, 1, 1)
-                date_filter = (start_date, today)
-            elif selected_period == "Last 12 Months":
-                start_date = today - timedelta(days=365)
-                date_filter = (start_date, today)
-            elif selected_period == "This Year":
-                start_date = date(today.year, 1, 1)
-                end_date = date(today.year, 12, 31)
-                date_filter = (start_date, min(end_date, today))
+        # Render filter controls
+        date_filter, filters, apply_filter = DashboardFilters.render_filter_controls()
         
         # Get transactions data (force refresh)
         transactions = cls._get_transactions_data()
@@ -132,42 +34,43 @@ class DashboardPage:
         # Only load data if filter is applied
         if apply_filter:
             # Get real financial data with all filters
-            current_month_data = cls._get_filtered_data(date_filter, filters)
+            current_month_data = DashboardAnalytics.get_filtered_data(date_filter, filters)
         else:
             # Show placeholder when filters not applied
             current_month_data = {'income': 0, 'expenses': 0}
             st.info("👆 Configure your filters and click 'Apply Filters' to view data")
         
         # Get trend data for comparison
-        trends = cls._calculate_trends(date_filter, filters) if apply_filter else {}
+        trends = DashboardAnalytics.calculate_trends(date_filter, filters) if apply_filter else {}
         
         with col1:
             income_trend = trends.get('income_trend', 0)
-            trend_text = f"{income_trend:+.1f}% vs prev period" if income_trend != 0 else "No prev data"
-            cls._summary_card("Income", f"${current_month_data['income']:,.2f}", trend_text, "positive" if income_trend >= 0 else "negative")
+            has_trend_data = trends.get('has_previous_data', False)
+            trend_text = f"{income_trend:+.1f}% vs prev period" if has_trend_data else "First period"
+            cls._summary_card("Income", f"${current_month_data['income']:,.2f}", trend_text, "neutral" if not has_trend_data else ("positive" if income_trend >= 0 else "negative"))
         
         with col2:
             expense_trend = trends.get('expense_trend', 0)
-            trend_text = f"{expense_trend:+.1f}% vs prev period" if expense_trend != 0 else "No prev data"
-            cls._summary_card("Expenses", f"${current_month_data['expenses']:,.2f}", trend_text, "negative" if expense_trend > 0 else "positive")
+            trend_text = f"{expense_trend:+.1f}% vs prev period" if has_trend_data else "First period"
+            cls._summary_card("Expenses", f"${current_month_data['expenses']:,.2f}", trend_text, "neutral" if not has_trend_data else ("negative" if expense_trend > 0 else "positive"))
         
         with col3:
             net_income = current_month_data['income'] - current_month_data['expenses']
             net_trend = trends.get('net_trend', 0)
-            trend_text = f"{net_trend:+.1f}% vs prev period" if net_trend != 0 else "No prev data"
-            cls._summary_card("Net Income", f"${net_income:,.2f}", trend_text, "positive" if net_income >= 0 else "negative")
+            trend_text = f"{net_trend:+.1f}% vs prev period" if has_trend_data else "First period"
+            cls._summary_card("Net Income", f"${net_income:,.2f}", trend_text, "neutral" if not has_trend_data else ("positive" if net_income >= 0 else "negative"))
         
         with col4:
             savings_rate = (net_income / current_month_data['income'] * 100) if current_month_data['income'] > 0 else 0
             savings_trend = trends.get('savings_trend', 0)
-            trend_text = f"{savings_trend:+.1f}% vs prev period" if savings_trend != 0 else "No prev data"
-            cls._summary_card("Savings Rate", f"{savings_rate:.1f}%", trend_text, "positive" if savings_trend >= 0 else "negative")
+            trend_text = f"{savings_trend:+.1f}% vs prev period" if has_trend_data else "First period"
+            cls._summary_card("Savings Rate", f"{savings_rate:.1f}%", trend_text, "neutral" if not has_trend_data else ("positive" if savings_trend >= 0 else "negative"))
         
         # Second row - Additional insights
         col1, col2, col3, col4 = st.columns(4)
         
-        # Get additional analytics
-        analytics = cls._get_additional_analytics(date_filter, filters) if apply_filter else {}
+        # Get additional analytics - only if advanced analytics is enabled
+        analytics = DashboardAnalytics.get_additional_analytics(date_filter, filters) if (apply_filter and AppConfig.FEATURES.get('advanced_analytics', True)) else {}
         
         with col1:
             transfers = analytics.get('transfers', 0)
@@ -219,18 +122,23 @@ class DashboardPage:
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             st.markdown("</div>", unsafe_allow_html=True)
         
-        # Budget progress
+        # Budget progress - only show if budget tracking is enabled
         with col2:
-            st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
-            st.markdown("<h2>Budget Progress</h2>", unsafe_allow_html=True)
-            
-            # Get real budget progress data
-            budget_data = cls._get_real_budget_data()
-            
-            # Create budget progress chart
-            fig = cls._create_budget_chart(budget_data)
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            st.markdown("</div>", unsafe_allow_html=True)
+            if AppConfig.FEATURES.get('budget_tracking', True):
+                st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+                st.markdown("<h2>Budget Progress</h2>", unsafe_allow_html=True)
+                
+                # Get real budget progress data
+                budget_data = cls._get_real_budget_data()
+                
+                # Create budget progress chart
+                fig = cls._create_budget_chart(budget_data)
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+                st.info("📊 Budget tracking is currently disabled")
+                st.markdown("</div>", unsafe_allow_html=True)
         
         # Recent transactions
         st.markdown("<div class='transactions-container'>", unsafe_allow_html=True)
@@ -759,7 +667,7 @@ class DashboardPage:
             # Calculate percentage changes
             def calc_change(current, previous):
                 if previous == 0:
-                    return 0 if current == 0 else 100
+                    return 0  # No previous data to compare
                 return ((current - previous) / previous) * 100
             
             current_income = current_data['income']
