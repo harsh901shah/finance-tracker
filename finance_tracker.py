@@ -16,6 +16,9 @@ from pages.login_page import LoginPage
 from services.database_service import DatabaseService
 from services.auth_service import AuthService
 from services.logger_service import LoggerService
+from components.onboarding import OnboardingGuide
+from components.user_profile import UserProfile
+from utils.auth_middleware import AuthMiddleware
 
 # Set page configuration
 st.set_page_config(
@@ -110,7 +113,9 @@ class FinanceApp:
                 
                 # Sidebar for navigation - ONLY when authenticated
                 with st.sidebar:
-                    st.markdown('<div class="sidebar-header"><h1>Finance Tracker</h1><p>Welcome, ' + st.session_state.user['full_name'] + '</p></div>', unsafe_allow_html=True)
+                    # Get personalized display name
+                    display_name = UserProfile.get_user_display_name()
+                    st.markdown(f'<div class="sidebar-header"><h1>💰 Finance Tracker</h1><p>Welcome, {display_name}</p></div>', unsafe_allow_html=True)
                     
                     # Get current page or default to Dashboard
                     if "current_page" not in st.session_state:
@@ -177,9 +182,24 @@ class FinanceApp:
                         st.session_state.authenticated = False
                         st.rerun()
             
-                # Display the selected page
+                # Show onboarding for new users
+                OnboardingGuide.show_welcome_tour()
+                
+                # Display the selected page with security check
                 try:
+                    # Ensure user is still authenticated before showing pages
+                    if not AuthMiddleware.is_authenticated():
+                        st.error("🔒 Session expired. Please login again.")
+                        st.session_state.authenticated = False
+                        st.rerun()
+                        return
+                    
                     page = selected_page
+                    
+                    # Show contextual tooltip for current page
+                    OnboardingGuide.show_page_tooltip(page)
+                    
+                    # Render the page
                     if page == "Add Transaction":
                         self.pages[page].show()
                     elif page == "View Transactions":

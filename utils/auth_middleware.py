@@ -48,3 +48,7 @@ class AuthMiddleware:
             del st.session_state.user_id
         if 'username' in st.session_state:
             del st.session_state.username
+        # Clear any other user-related session data for complete logout
+        keys_to_clear = [k for k in st.session_state.keys() if k.startswith('user_') or k.startswith('onboarding_')]
+        for key in keys_to_clear:
+            del st.session_state[key]

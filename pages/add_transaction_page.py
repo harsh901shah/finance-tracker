@@ -22,7 +22,7 @@ class AddTransactionPage:
             
             with col1:
                 if st.button("💰 Monthly Salary", use_container_width=True, key="salary_btn"):
-                    st.session_state.show_salary_form = True
+                    st.session_state.show_salary_form = not st.session_state.get('show_salary_form', False)
                 
                 # Show salary form inline
                 if st.session_state.get('show_salary_form', False):
@@ -48,7 +48,7 @@ class AddTransactionPage:
                                 )
                 
                 if st.button("🏦 Interest Income", use_container_width=True, key="interest_btn"):
-                    st.session_state.show_interest_form = True
+                    st.session_state.show_interest_form = not st.session_state.get('show_interest_form', False)
                 
                 # Show interest form inline
                 if st.session_state.get('show_interest_form', False):
@@ -83,7 +83,7 @@ class AddTransactionPage:
             
             with col2:
                 if st.button("📈 BOX STOCKS ESPP", use_container_width=True, key="espp_btn"):
-                    st.session_state.show_espp_form = True
+                    st.session_state.show_espp_form = not st.session_state.get('show_espp_form', False)
                 
                 # Show ESPP form inline
                 if st.session_state.get('show_espp_form', False):
@@ -116,7 +116,7 @@ class AddTransactionPage:
                                 st.session_state.show_espp_form = False
                                 st.rerun()
                 if st.button("💸 Tax Refund", use_container_width=True, key="tax_refund_btn"):
-                    st.session_state.show_tax_refund_form = True
+                    st.session_state.show_tax_refund_form = not st.session_state.get('show_tax_refund_form', False)
                 
                 # Show tax refund form inline
                 if st.session_state.get('show_tax_refund_form', False):
@@ -151,7 +151,7 @@ class AddTransactionPage:
             
             with col3:
                 if st.button("📊 BOX RSU", use_container_width=True, key="rsu_btn"):
-                    st.session_state.show_rsu_form = True
+                    st.session_state.show_rsu_form = not st.session_state.get('show_rsu_form', False)
                 
                 # Show RSU form inline
                 if st.session_state.get('show_rsu_form', False):
@@ -185,7 +185,7 @@ class AddTransactionPage:
                                 st.rerun()
                 
                 if st.button("💹 BOX ESPP PROFIT", use_container_width=True, key="espp_profit_btn"):
-                    st.session_state.show_espp_profit_form = True
+                    st.session_state.show_espp_profit_form = not st.session_state.get('show_espp_profit_form', False)
                 
                 # Show ESPP Profit form inline
                 if st.session_state.get('show_espp_profit_form', False):
@@ -224,7 +224,7 @@ class AddTransactionPage:
             
             with col1:
                 if st.button("🏛️ TAXES PAID", use_container_width=True, key="taxes_paid_btn"):
-                    st.session_state.show_taxes_paid_form = True
+                    st.session_state.show_taxes_paid_form = not st.session_state.get('show_taxes_paid_form', False)
                 
                 # Show taxes paid form inline
                 if st.session_state.get('show_taxes_paid_form', False):
@@ -259,7 +259,7 @@ class AddTransactionPage:
             
             with col2:
                 if st.button("🏦 401K Pretax", use_container_width=True, key="401k_pretax_btn"):
-                    st.session_state.show_401k_pretax_form = True
+                    st.session_state.show_401k_pretax_form = not st.session_state.get('show_401k_pretax_form', False)
                 
                 # Show 401K pretax form inline
                 if st.session_state.get('show_401k_pretax_form', False):
@@ -294,7 +294,7 @@ class AddTransactionPage:
             
             with col3:
                 if st.button("🏥 HSA", use_container_width=True, key="hsa_btn"):
-                    st.session_state.show_hsa_form = True
+                    st.session_state.show_hsa_form = not st.session_state.get('show_hsa_form', False)
                 
                 # Show HSA form inline
                 if st.session_state.get('show_hsa_form', False):
