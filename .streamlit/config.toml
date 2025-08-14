@@ -1,0 +1,32 @@
+[server]
+# Security: Disable automatic page discovery to prevent direct URL access to page files
+# This forces all navigation through our main finance_tracker.py application
+enableStaticServing = false
+# Additional security: Disable CORS for production deployment
+# Prevents unauthorized cross-origin requests to the application
+corsAllowedOrigins = []
+
+[client]
+# Disable automatic page navigation - we handle all navigation in finance_tracker.py
+# This prevents Streamlit from creating automatic navigation from pages/ directory
+showSidebarNavigation = false
+# Disable automatic error details for security in production
+# Prevents sensitive error information from being exposed to users
+showErrorDetails = false
+
+[ui]
+# Keep top bar for user experience - shows app title and menu
+hideTopBar = false
+# Hide deploy button for cleaner UI - removes Streamlit Cloud deploy option
+hideDeployButton = true
+
+[theme]
+# Financial app color scheme - green represents money/growth in finance apps
+# Primary color used for buttons, links, and active states
+primaryColor = "#059669"
+# Main background color for the application
+backgroundColor = "#ffffff"
+# Secondary background for cards, sidebars, and containers
+secondaryBackgroundColor = "#f8fafc"
+# Main text color for readability and accessibility
+textColor = "#1f2937"

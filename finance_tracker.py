@@ -12,14 +12,13 @@ from pages.dashboard_page import DashboardPage
 from pages.networth_page import NetWorthPage
 from pages.transaction_page import TransactionPage
 from pages.add_transaction_page import AddTransactionPage
-from pages.budget_page import BudgetPage
-from pages.settings_page import SettingsPage
-from pages.document_upload_page import DocumentUploadPage
-from pages.db_viewer_page import DBViewerPage
 from pages.login_page import LoginPage
 from services.database_service import DatabaseService
 from services.auth_service import AuthService
 from services.logger_service import LoggerService
+from components.onboarding import OnboardingGuide
+from components.user_profile import UserProfile
+from utils.auth_middleware import AuthMiddleware
 
 # Set page configuration
 st.set_page_config(
@@ -55,11 +54,7 @@ class FinanceApp:
             "Dashboard": DashboardPage,
             "Net Worth": NetWorthPage,
             "View Transactions": TransactionPage.show_list,
-            "Add Transaction": AddTransactionPage,
-            "Budget": BudgetPage,
-            "Upload Documents": DocumentUploadPage,
-            "Settings": SettingsPage,
-            "DB Viewer": DBViewerPage
+            "Add Transaction": AddTransactionPage
         }
     
     def _initialize_database(self):
@@ -107,18 +102,20 @@ class FinanceApp:
             is_authenticated = LoginPage.verify_authentication()
             
             if not is_authenticated:
-                # Show login page if not authenticated
+                # Show login page if not authenticated - NO SIDEBAR
                 is_authenticated = LoginPage.show()
                 
             if is_authenticated:
-                # User is authenticated, show the main app
+                # User is authenticated, show the main app with sidebar
                 
                 # Apply custom CSS for sidebar
                 self._apply_sidebar_css()
                 
-                # Sidebar for navigation
+                # Sidebar for navigation - ONLY when authenticated
                 with st.sidebar:
-                    st.markdown('<div class="sidebar-header"><h1>Finance Tracker</h1><p>Welcome, ' + st.session_state.user['full_name'] + '</p></div>', unsafe_allow_html=True)
+                    # Get personalized display name
+                    display_name = UserProfile.get_user_display_name()
+                    st.markdown(f'<div class="sidebar-header"><h1>💰 Finance Tracker</h1><p>Welcome, {display_name}</p></div>', unsafe_allow_html=True)
                     
                     # Get current page or default to Dashboard
                     if "current_page" not in st.session_state:
@@ -185,9 +182,24 @@ class FinanceApp:
                         st.session_state.authenticated = False
                         st.rerun()
             
-                # Display the selected page
+                # Show onboarding for new users
+                OnboardingGuide.show_welcome_tour()
+                
+                # Display the selected page with security check
                 try:
+                    # Ensure user is still authenticated before showing pages
+                    if not AuthMiddleware.is_authenticated():
+                        st.error("🔒 Session expired. Please login again.")
+                        st.session_state.authenticated = False
+                        st.rerun()
+                        return
+                    
                     page = selected_page
+                    
+                    # Show contextual tooltip for current page
+                    OnboardingGuide.show_page_tooltip(page)
+                    
+                    # Render the page
                     if page == "Add Transaction":
                         self.pages[page].show()
                     elif page == "View Transactions":
