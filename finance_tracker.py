@@ -20,6 +20,9 @@ from services.logger_service import LoggerService
 from components.onboarding import OnboardingGuide
 from components.user_profile import UserProfile
 from utils.auth_middleware import AuthMiddleware
+from services.onboarding_service import OnboardingService
+from services.tooltip_service import TooltipService
+import time
 
 # Set page configuration
 st.set_page_config(
@@ -157,19 +160,52 @@ class FinanceApp:
                     # Use current page for display
                     selected_page = current_page
                     
+                    # Show contextual tips
+                    if OnboardingService.should_show_onboarding(user_id):
+                        tips = OnboardingService.get_contextual_tips(current_page.lower().replace(' ', '_'), OnboardingService.get_user_progress(user_id))
+                        if tips:
+                            with st.expander("💡 Tips", expanded=False):
+                                for tip in tips[:2]:  # Show max 2 tips
+                                    st.info(tip)
+                    
                     # End of navigation
+                    
+                    # Debug mode toggle (hidden feature)
+                    if st.sidebar.checkbox("Debug Mode", value=False, help="Show performance metrics"):
+                        st.session_state.debug_mode = True
+                    else:
+                        st.session_state.debug_mode = False
                     
                     # Logout button
                     st.markdown('<div class="logout-section"></div>', unsafe_allow_html=True)
                     if st.sidebar.button("Logout", key="logout_button", use_container_width=True, type="secondary"):
+                        # Clear all cached data on logout
+                        from services.financial_data_service import TransactionService
+                        TransactionService.clear_cache(user_id)
+                        
                         if "user" in st.session_state and st.session_state.user and "session_token" in st.session_state.user:
                             AuthService.logout(st.session_state.user["session_token"])
                         st.session_state.user = None
                         st.session_state.authenticated = False
+                        
+                        # Clear all session state
+                        for key in list(st.session_state.keys()):
+                            if key.startswith(('cached_', 'onboarding_', 'debug_')):
+                                del st.session_state[key]
+                        
                         st.rerun()
             
                 # Show onboarding for new users
-                OnboardingGuide.show_welcome_tour()
+                current_user = AuthMiddleware.get_current_user_id()
+                user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+                
+                # Show onboarding checklist for new users
+                if OnboardingService.should_show_onboarding(user_id):
+                    with st.expander("🚀 Getting Started", expanded=True):
+                        OnboardingService.show_onboarding_checklist(user_id)
+                
+                # Show contextual onboarding based on current page
+                OnboardingService.show_onboarding_flow(user_id, selected_page.lower().replace(' ', '_'))
                 
                 # Display the selected page with security check
                 try:
@@ -182,16 +218,63 @@ class FinanceApp:
                     
                     page = selected_page
                     
+                    # Performance monitoring
+                    start_time = time.time()
+                    
                     # Show contextual tooltip for current page
                     OnboardingGuide.show_page_tooltip(page)
                     
-                    # Render the page
-                    if page == "Add Transaction":
-                        self.pages[page].show()
-                    elif page == "View Transactions":
-                        self.pages[page]()
-                    else:
-                        self.pages[page].show()
+                    # Show feature highlights for new features
+                    if page == "View Transactions":
+                        with st.expander("✨ New Features", expanded=False):
+                            OnboardingService.show_feature_highlights(['bulk_actions', 'undo_support', 'audit_log'])
+                    
+                    # Render the page with error boundary
+                    try:
+                        if page == "Add Transaction":
+                            self.pages[page].show()
+                            # Check for onboarding triggers
+                            OnboardingService.check_onboarding_triggers(user_id, 'page_visited', {'page': 'add_transaction'})
+                        elif page == "View Transactions":
+                            self.pages[page]()
+                        elif page == "Net Worth":
+                            self.pages[page].show()
+                            OnboardingService.check_onboarding_triggers(user_id, 'net_worth_viewed')
+                        elif page == "Budget":
+                            self.pages[page].show()
+                            OnboardingService.check_onboarding_triggers(user_id, 'budget_viewed')
+                        else:
+                            self.pages[page].show()
+                        
+                        # Performance monitoring
+                        load_time = time.time() - start_time
+                        if load_time > 2.0:  # Log slow page loads
+                            self.logger.warning(f"Slow page load: {page} took {load_time:.2f}s")
+                        
+                        # Show performance info in debug mode
+                        if st.session_state.get('debug_mode', False):
+                            st.caption(f"⚡ Page loaded in {load_time:.2f}s")
+                    
+                    except Exception as page_error:
+                        # Page-specific error handling
+                        self.logger.error(f"Error in page {page}: {str(page_error)}")
+                        st.error(f"Error loading {page}. Please try again.")
+                        
+                        # Show fallback content
+                        st.info("💡 Try refreshing the page or contact support if the issue persists.")
+                        
+                        # Offer alternative actions
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            if st.button("🏠 Go to Dashboard"):
+                                st.session_state.current_page = "Dashboard"
+                                st.rerun()
+                        with col2:
+                            if st.button("🔄 Refresh Page"):
+                                st.rerun()
+                        with col3:
+                            if st.button("📞 Get Help"):
+                                st.info("Contact support: support@financetracker.com")
                 except Exception as e:
                     # Handle errors when displaying pages
                     error_msg = f"Error displaying page: {str(e)}"

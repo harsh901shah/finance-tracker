@@ -3,6 +3,9 @@ import pandas as pd
 import json
 from datetime import datetime
 from services.financial_data_service import TransactionService
+from services.database_service import DatabaseService
+from services.tooltip_service import TooltipService
+from services.auth_service import AuthMiddleware
 
 class TransactionPage:
     """Transaction page for adding and viewing transactions"""
@@ -50,6 +53,26 @@ class TransactionPage:
     @staticmethod
     def show_list():
         st.header("📋 Transaction History")
+        
+        # Show contextual help
+        TooltipService.show_contextual_help('view_transactions')
+        
+        # Show undo options if available
+        user_id = AuthMiddleware.get_current_user_id().get('user_id')
+        undo_snapshots = DatabaseService.get_undo_snapshots(user_id)
+        if undo_snapshots:
+            with st.expander("↩️ Undo Recent Actions", expanded=False):
+                for snapshot in undo_snapshots[:3]:  # Show last 3 undo options
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.write(f"**{snapshot['action'].replace('_', ' ').title()}** - {snapshot['created_at'][:16]}")
+                    with col2:
+                        if st.button("Undo", key=f"undo_{snapshot['id']}"):
+                            if DatabaseService.restore_from_undo(snapshot['id'], user_id):
+                                st.success("Action undone successfully!")
+                                st.rerun()
+                            else:
+                                st.error("Failed to undo action")
         
         # Load transactions
         transactions = TransactionService.load_transactions()
@@ -204,19 +227,34 @@ class TransactionPage:
             standard_columns = ['date', 'description', 'amount', 'type', 'category', 'payment_method']
             display_columns = [col for col in standard_columns if col in display_df.columns]
             
-            # Display transactions table with delete buttons
+            # Bulk selection interface
+            st.subheader("Select Transactions")
+            selected_transactions = []
+            
+            # Select all checkbox
+            select_all = st.checkbox("Select All Visible Transactions")
+            
+            # Display transactions table with selection and delete buttons
             for idx, row in display_df.iterrows():
-                col1, col2 = st.columns([8, 1])
+                col1, col2, col3 = st.columns([1, 7, 1])
                 
                 with col1:
-                    # Display transaction info
-                    st.write(f"**{row['date']}** | {row['description']} | **${row['amount']:.2f}** | {row['type']} | {row['category']} | {row['payment_method']}")
+                    # Individual selection checkbox
+                    is_selected = select_all or st.checkbox("", key=f"select_{row['id']}")
+                    if is_selected:
+                        selected_transactions.append(row['id'])
                 
                 with col2:
-                    # Delete button for each transaction
-                    if st.button("🗑️", key=f"delete_{row['id']}", help="Delete transaction"):
-                        if TransactionPage._delete_transaction(row['id']):
-                            st.success("Transaction deleted!")
+                    # Display transaction info with tooltips
+                    type_emoji = {"Income": "💰", "Expense": "💸", "Tax": "🏛️", "Transfer": "🔄", "Investment": "📈"}
+                    emoji = type_emoji.get(row['type'], "📝")
+                    st.write(f"{emoji} **{row['date']}** | {row['description']} | **${row['amount']:.2f}** | {row['type']} | {row['category']} | {row['payment_method']}")
+                
+                with col3:
+                    # Delete button for individual transaction
+                    if st.button("🗑️", key=f"delete_{row['id']}", help="Delete this transaction"):
+                        if TransactionPage._delete_single_transaction(row['id'], user_id, dict(row)):
+                            st.success("Transaction deleted! Check undo options above to restore.")
                             st.rerun()
                         else:
                             st.error("Failed to delete transaction")
@@ -225,13 +263,44 @@ class TransactionPage:
             
             # Bulk operations
             st.subheader("🔧 Bulk Operations")
+            
+            if selected_transactions:
+                st.info(f"Selected {len(selected_transactions)} transactions")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("🗑️ Delete Selected", use_container_width=True, type="secondary"):
+                        if st.session_state.get('confirm_bulk_delete'):
+                            deleted_count = TransactionPage._bulk_delete_transactions(selected_transactions, user_id, display_df)
+                            if deleted_count > 0:
+                                st.success(f"Deleted {deleted_count} transactions! Check undo options to restore.")
+                                st.rerun()
+                            else:
+                                st.error("Failed to delete transactions")
+                            st.session_state['confirm_bulk_delete'] = False
+                        else:
+                            st.session_state['confirm_bulk_delete'] = True
+                            st.warning(f"Click again to confirm deletion of {len(selected_transactions)} transactions")
+                
+                with col2:
+                    if st.button("📊 Export Selected", use_container_width=True):
+                        selected_df = display_df[display_df['id'].isin(selected_transactions)]
+                        csv = selected_df.to_csv(index=False)
+                        st.download_button(
+                            label="Download Selected CSV",
+                            data=csv,
+                            file_name=f"selected_transactions_{datetime.now().strftime('%Y%m%d')}.csv",
+                            mime="text/csv"
+                        )
+            
+            # Other bulk operations
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("📊 Export to CSV", use_container_width=True):
+                if st.button("📊 Export All", use_container_width=True):
                     csv = display_df.to_csv(index=False)
                     st.download_button(
-                        label="Download CSV",
+                        label="Download All CSV",
                         data=csv,
                         file_name=f"transactions_{datetime.now().strftime('%Y%m%d')}.csv",
                         mime="text/csv"
@@ -242,8 +311,8 @@ class TransactionPage:
                     TransactionPage._show_transaction_summary(filtered_df)
             
             with col3:
-                if st.button("🗑️ Delete Selected", use_container_width=True, type="secondary"):
-                    st.warning("Select transactions to delete (feature coming soon)")
+                if st.button("🔍 Advanced Filters", use_container_width=True):
+                    st.info("Use the filters above to narrow down transactions")
             
             # Check for additional data columns
             standard_columns = ['date', 'description', 'amount', 'type', 'category', 'payment_method']
@@ -299,14 +368,36 @@ class TransactionPage:
             st.info("💡 Try adjusting your search terms or filters.")
     
     @staticmethod
-    def _delete_transaction(transaction_id):
-        """Delete a transaction by ID"""
+    def _delete_single_transaction(transaction_id, user_id, transaction_data):
+        """Delete a single transaction with undo support"""
         try:
-            from services.database_service import DatabaseService
-            return DatabaseService.delete_transaction(transaction_id)
+            # Create undo snapshot
+            DatabaseService.create_undo_snapshot(user_id, 'DELETE_TRANSACTION', transaction_data)
+            
+            # Delete transaction
+            return DatabaseService.delete_transaction(transaction_id, user_id)
         except Exception as e:
             st.error(f"Error deleting transaction: {e}")
             return False
+    
+    @staticmethod
+    def _bulk_delete_transactions(transaction_ids, user_id, df):
+        """Delete multiple transactions with undo support"""
+        try:
+            # Get transaction data for undo
+            transactions_data = []
+            for tid in transaction_ids:
+                transaction_row = df[df['id'] == tid].iloc[0]
+                transactions_data.append(dict(transaction_row))
+            
+            # Create undo snapshot
+            DatabaseService.create_undo_snapshot(user_id, 'BULK_DELETE_TRANSACTIONS', {'transactions': transactions_data})
+            
+            # Delete transactions
+            return DatabaseService.bulk_delete_transactions(transaction_ids, user_id)
+        except Exception as e:
+            st.error(f"Error deleting transactions: {e}")
+            return 0
     
     @staticmethod
     def _show_transaction_summary(df):
