@@ -17,8 +17,6 @@ showErrorDetails = false
 [ui]
 # Keep top bar for user experience - shows app title and menu
 hideTopBar = false
-# Hide deploy button for cleaner UI - removes Streamlit Cloud deploy option
-hideDeployButton = true
 
 [theme]
 # Financial app color scheme - green represents money/growth in finance apps

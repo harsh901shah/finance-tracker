@@ -76,7 +76,7 @@ class AddTransactionPage:
                                     'category': 'Investment',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Interest Income added: ${amount:.2f}")
                                 st.session_state.show_interest_form = False
                                 st.rerun()
@@ -111,7 +111,7 @@ class AddTransactionPage:
                                     'category': 'Investment',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ BOX STOCKS ESPP added: ${amount:.2f}")
                                 st.session_state.show_espp_form = False
                                 st.rerun()
@@ -144,7 +144,7 @@ class AddTransactionPage:
                                     'category': 'Tax',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Tax Refund added: ${amount:.2f}")
                                 st.session_state.show_tax_refund_form = False
                                 st.rerun()
@@ -179,7 +179,7 @@ class AddTransactionPage:
                                     'category': 'Investment',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ BOX RSU added: ${amount:.2f}")
                                 st.session_state.show_rsu_form = False
                                 st.rerun()
@@ -213,13 +213,13 @@ class AddTransactionPage:
                                     'category': 'Investment',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ BOX ESPP PROFIT added: ${amount:.2f}")
                                 st.session_state.show_espp_profit_form = False
                                 st.rerun()
         
-        # Deductions section
-        with st.expander("🏛️ Deductions"):
+        # Taxes & Payroll section
+        with st.expander("🏛️ Taxes & Payroll"):
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -247,85 +247,21 @@ class AddTransactionPage:
                                 transaction = {
                                     'date': transaction_date.strftime('%Y-%m-%d'),
                                     'amount': float(amount),
-                                    'type': 'Expense',
+                                    'type': 'Tax',
                                     'description': f"TAXES PAID" + (f" - {notes}" if notes else ""),
                                     'category': 'Tax',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ TAXES PAID added: ${amount:.2f}")
                                 st.session_state.show_taxes_paid_form = False
                                 st.rerun()
             
             with col2:
-                if st.button("🏦 401K Pretax", use_container_width=True, key="401k_pretax_btn"):
-                    st.session_state.show_401k_pretax_form = not st.session_state.get('show_401k_pretax_form', False)
-                
-                # Show 401K pretax form inline
-                if st.session_state.get('show_401k_pretax_form', False):
-                    with st.container():
-                        st.markdown("**401K Pretax**")
-                        amount = st.number_input("Amount ($)", value=800.0, step=0.01, key="401k_pretax_amount")
-                        transaction_date = st.date_input("Date", value=date.today(), key="401k_pretax_date")
-                        payment_method = st.selectbox("Payment Method", [
-                            "Direct Deposit", "Bank Transfer", "Credit Card", "Cash", "Check"
-                        ], key="401k_pretax_payment")
-                        notes = st.text_input("Notes (optional)", placeholder="Add details here...", key="401k_pretax_notes")
-                        
-                        col_cancel, col_add = st.columns(2)
-                        with col_cancel:
-                            if st.button("Cancel", key="401k_pretax_cancel"):
-                                st.session_state.show_401k_pretax_form = False
-                                st.rerun()
-                        with col_add:
-                            if st.button("Add", type="primary", key="401k_pretax_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Income',
-                                    'description': f"401K Pretax" + (f" - {notes}" if notes else ""),
-                                    'category': 'Retirement',
-                                    'payment_method': payment_method
-                                }
-                                transaction_id = DatabaseService.add_transaction(transaction)
-                                st.success(f"✅ 401K Pretax added: ${amount:.2f}")
-                                st.session_state.show_401k_pretax_form = False
-                                st.rerun()
+                st.write("")
             
             with col3:
-                if st.button("🏥 HSA", use_container_width=True, key="hsa_btn"):
-                    st.session_state.show_hsa_form = not st.session_state.get('show_hsa_form', False)
-                
-                # Show HSA form inline
-                if st.session_state.get('show_hsa_form', False):
-                    with st.container():
-                        st.markdown("**HSA**")
-                        amount = st.number_input("Amount ($)", value=300.0, step=0.01, key="hsa_amount")
-                        transaction_date = st.date_input("Date", value=date.today(), key="hsa_date")
-                        payment_method = st.selectbox("Payment Method", [
-                            "Direct Deposit", "Bank Transfer", "Credit Card", "Cash", "Check"
-                        ], key="hsa_payment")
-                        notes = st.text_input("Notes (optional)", placeholder="Add details here...", key="hsa_notes")
-                        
-                        col_cancel, col_add = st.columns(2)
-                        with col_cancel:
-                            if st.button("Cancel", key="hsa_cancel"):
-                                st.session_state.show_hsa_form = False
-                                st.rerun()
-                        with col_add:
-                            if st.button("Add", type="primary", key="hsa_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Income',
-                                    'description': f"HSA" + (f" - {notes}" if notes else ""),
-                                    'category': 'Healthcare',
-                                    'payment_method': payment_method
-                                }
-                                transaction_id = DatabaseService.add_transaction(transaction)
-                                st.success(f"✅ HSA added: ${amount:.2f}")
-                                st.session_state.show_hsa_form = False
-                                st.rerun()
+                st.write("")
         
         # Housing expenses
         with st.expander("🏠 Housing"):
@@ -370,7 +306,7 @@ class AddTransactionPage:
                                     'category': 'Housing',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ HOA Fee added: ${amount:.2f}")
                                 st.session_state.show_hoa_form = False
                                 st.rerun()
@@ -405,7 +341,7 @@ class AddTransactionPage:
                                     'category': 'Housing',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Property Tax added: ${amount:.2f}")
                                 st.session_state.show_property_tax_form = False
                                 st.rerun()
@@ -439,7 +375,7 @@ class AddTransactionPage:
                                     'category': 'Shopping',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Furniture Purchase added: ${amount:.2f}")
                                 st.session_state.show_furniture_form = False
                                 st.rerun()
@@ -481,7 +417,7 @@ class AddTransactionPage:
                                     'category': 'Shopping',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Jewelry Purchase added: ${amount:.2f}")
                                 st.session_state.show_jewelry_form = False
                                 st.rerun()
@@ -547,7 +483,7 @@ class AddTransactionPage:
                                     'category': 'Transportation',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Car Insurance added: ${amount:.2f}")
                                 st.session_state.show_car_insurance_form = False
                                 st.rerun()
@@ -582,18 +518,129 @@ class AddTransactionPage:
                                     'category': 'Transportation',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Gas Fill-up added: ${amount:.2f}")
                                 st.session_state.show_gas_form = False
                                 st.rerun()
         
-        # Credit & Debt
-        with st.expander("💳 Credit & Debt"):
+
+        
+        # Retirement section
+        with st.expander("🏦 Retirement"):
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if st.button("🏦 401K Pretax", use_container_width=True, key="401k_pretax_retirement_btn"):
+                    st.session_state.show_401k_pretax_retirement_form = not st.session_state.get('show_401k_pretax_retirement_form', False)
+                
+                # Show 401K pretax form inline
+                if st.session_state.get('show_401k_pretax_retirement_form', False):
+                    with st.container():
+                        st.markdown("**401K Pretax**")
+                        amount = st.number_input("Amount ($)", value=800.0, step=0.01, key="401k_pretax_retirement_amount")
+                        transaction_date = st.date_input("Date", value=date.today(), key="401k_pretax_retirement_date")
+                        payment_method = st.selectbox("Payment Method", [
+                            "Direct Deposit", "Bank Transfer", "Credit Card", "Cash", "Check"
+                        ], key="401k_pretax_retirement_payment")
+                        notes = st.text_input("Notes (optional)", placeholder="Add details here...", key="401k_pretax_retirement_notes")
+                        
+                        col_cancel, col_add = st.columns(2)
+                        with col_cancel:
+                            if st.button("Cancel", key="401k_pretax_retirement_cancel"):
+                                st.session_state.show_401k_pretax_retirement_form = False
+                                st.rerun()
+                        with col_add:
+                            if st.button("Add", type="primary", key="401k_pretax_retirement_add"):
+                                transaction = {
+                                    'date': transaction_date.strftime('%Y-%m-%d'),
+                                    'amount': float(amount),
+                                    'type': 'Income',
+                                    'description': f"401K Pretax" + (f" - {notes}" if notes else ""),
+                                    'category': 'Retirement',
+                                    'payment_method': payment_method
+                                }
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                st.success(f"✅ 401K Pretax added: ${amount:.2f}")
+                                st.session_state.show_401k_pretax_retirement_form = False
+                                st.rerun()
+            
+            with col2:
+                if st.button("🏦 401k Roth", use_container_width=True, key="401k_roth_retirement_btn"):
+                    st.session_state.show_401k_roth_retirement_form = not st.session_state.get('show_401k_roth_retirement_form', False)
+                
+                # Show 401k Roth form inline
+                if st.session_state.get('show_401k_roth_retirement_form', False):
+                    with st.container():
+                        st.markdown("**401k Roth Contribution**")
+                        amount = st.number_input("Amount ($)", value=500.0, step=0.01, key="401k_roth_retirement_amount")
+                        transaction_date = st.date_input("Date", value=date.today(), key="401k_roth_retirement_date")
+                        payment_method = st.selectbox("Payment Method", [
+                            "Direct Deposit", "Bank Transfer", "Credit Card", "Cash", "Check"
+                        ], key="401k_roth_retirement_payment")
+                        notes = st.text_input("Notes (optional)", placeholder="Add details here...", key="401k_roth_retirement_notes")
+                        
+                        col_cancel, col_add = st.columns(2)
+                        with col_cancel:
+                            if st.button("Cancel", key="401k_roth_retirement_cancel"):
+                                st.session_state.show_401k_roth_retirement_form = False
+                                st.rerun()
+                        with col_add:
+                            if st.button("Add", type="primary", key="401k_roth_retirement_add"):
+                                transaction = {
+                                    'date': transaction_date.strftime('%Y-%m-%d'),
+                                    'amount': float(amount),
+                                    'type': 'Investment',
+                                    'description': f"401k Roth Contribution" + (f" - {notes}" if notes else ""),
+                                    'category': 'Retirement',
+                                    'payment_method': payment_method
+                                }
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                st.success(f"✅ 401k Roth Contribution added: ${amount:.2f}")
+                                st.session_state.show_401k_roth_retirement_form = False
+                                st.rerun()
+            
+            with col3:
+                if st.button("🏥 HSA", use_container_width=True, key="hsa_retirement_btn"):
+                    st.session_state.show_hsa_retirement_form = not st.session_state.get('show_hsa_retirement_form', False)
+                
+                # Show HSA form inline
+                if st.session_state.get('show_hsa_retirement_form', False):
+                    with st.container():
+                        st.markdown("**HSA**")
+                        amount = st.number_input("Amount ($)", value=300.0, step=0.01, key="hsa_retirement_amount")
+                        transaction_date = st.date_input("Date", value=date.today(), key="hsa_retirement_date")
+                        payment_method = st.selectbox("Payment Method", [
+                            "Direct Deposit", "Bank Transfer", "Credit Card", "Cash", "Check"
+                        ], key="hsa_retirement_payment")
+                        notes = st.text_input("Notes (optional)", placeholder="Add details here...", key="hsa_retirement_notes")
+                        
+                        col_cancel, col_add = st.columns(2)
+                        with col_cancel:
+                            if st.button("Cancel", key="hsa_retirement_cancel"):
+                                st.session_state.show_hsa_retirement_form = False
+                                st.rerun()
+                        with col_add:
+                            if st.button("Add", type="primary", key="hsa_retirement_add"):
+                                transaction = {
+                                    'date': transaction_date.strftime('%Y-%m-%d'),
+                                    'amount': float(amount),
+                                    'type': 'Income',
+                                    'description': f"HSA" + (f" - {notes}" if notes else ""),
+                                    'category': 'Healthcare',
+                                    'payment_method': payment_method
+                                }
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                st.success(f"✅ HSA added: ${amount:.2f}")
+                                st.session_state.show_hsa_retirement_form = False
+                                st.rerun()
+        
+        # Debt & Credit section
+        with st.expander("💳 Debt & Credit"):
             col1, col2, col3 = st.columns(3)
             
             with col1:
                 if st.button("💳 DISCOVER DEBT", use_container_width=True, key="discover_debt_btn"):
-                    st.session_state.show_discover_debt_form = True
+                    st.session_state.show_discover_debt_form = not st.session_state.get('show_discover_debt_form', False)
                 
                 # Show discover debt form inline
                 if st.session_state.get('show_discover_debt_form', False):
@@ -621,14 +668,14 @@ class AddTransactionPage:
                                     'category': 'Credit Card',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Discover Credit Card Payment added: ${amount:.2f}")
                                 st.session_state.show_discover_debt_form = False
                                 st.rerun()
             
             with col2:
                 if st.button("💳 Credit Card Payment", use_container_width=True, key="credit_card_payment_btn"):
-                    st.session_state.show_credit_card_payment_form = True
+                    st.session_state.show_credit_card_payment_form = not st.session_state.get('show_credit_card_payment_form', False)
                 
                 # Show credit card payment form inline
                 if st.session_state.get('show_credit_card_payment_form', False):
@@ -656,14 +703,14 @@ class AddTransactionPage:
                                     'category': 'Credit Card',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Credit Card Payment added: ${amount:.2f}")
                                 st.session_state.show_credit_card_payment_form = False
                                 st.rerun()
             
             with col3:
                 if st.button("🏠 Extra Principal", use_container_width=True, key="extra_principal_btn"):
-                    st.session_state.show_extra_principal_form = True
+                    st.session_state.show_extra_principal_form = not st.session_state.get('show_extra_principal_form', False)
                 
                 # Show extra principal form inline
                 if st.session_state.get('show_extra_principal_form', False):
@@ -691,7 +738,7 @@ class AddTransactionPage:
                                     'category': 'Housing',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Extra Principal Payment added: ${amount:.2f}")
                                 st.session_state.show_extra_principal_form = False
                                 st.rerun()
@@ -730,7 +777,7 @@ class AddTransactionPage:
                                     'category': 'Savings',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Savings Bank Transfer added: ${amount:.2f}")
                                 st.session_state.show_savings_transfer_form = False
                                 st.rerun()
@@ -764,7 +811,7 @@ class AddTransactionPage:
                                     'category': 'Investment',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Robinhood Investment added: ${amount:.2f}")
                                 st.session_state.show_robinhood_form = False
                                 st.rerun()
@@ -799,7 +846,7 @@ class AddTransactionPage:
                                     'category': 'Savings',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Savings Bank Withdraw added: ${amount:.2f}")
                                 st.session_state.show_savings_withdraw_form = False
                                 st.rerun()
@@ -833,7 +880,7 @@ class AddTransactionPage:
                                     'category': 'Investment',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Gold Investment added: ${amount:.2f}")
                                 st.session_state.show_gold_investment_form = False
                                 st.rerun()
@@ -868,43 +915,11 @@ class AddTransactionPage:
                                     'category': 'Transfer',
                                     'payment_method': payment_method
                                 }
-                                transaction_id = DatabaseService.add_transaction(transaction)
+                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                                 st.success(f"✅ Money Sent India added: ${amount:.2f}")
                                 st.session_state.show_money_india_form = False
                                 st.rerun()
-                if st.button("🏦 401k Roth", use_container_width=True, key="401k_roth_btn"):
-                    st.session_state.show_401k_roth_form = True
-                
-                # Show 401k Roth form inline
-                if st.session_state.get('show_401k_roth_form', False):
-                    with st.container():
-                        st.markdown("**401k Roth Contribution**")
-                        amount = st.number_input("Amount ($)", value=500.0, step=0.01, key="401k_roth_amount")
-                        transaction_date = st.date_input("Date", value=date.today(), key="401k_roth_date")
-                        payment_method = st.selectbox("Payment Method", [
-                            "Direct Deposit", "Bank Transfer", "Credit Card", "Cash", "Check"
-                        ], key="401k_roth_payment")
-                        notes = st.text_input("Notes (optional)", placeholder="Add details here...", key="401k_roth_notes")
-                        
-                        col_cancel, col_add = st.columns(2)
-                        with col_cancel:
-                            if st.button("Cancel", key="401k_roth_cancel"):
-                                st.session_state.show_401k_roth_form = False
-                                st.rerun()
-                        with col_add:
-                            if st.button("Add", type="primary", key="401k_roth_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Investment',
-                                    'description': f"401k Roth Contribution" + (f" - {notes}" if notes else ""),
-                                    'category': 'Retirement',
-                                    'payment_method': payment_method
-                                }
-                                transaction_id = DatabaseService.add_transaction(transaction)
-                                st.success(f"✅ 401k Roth Contribution added: ${amount:.2f}")
-                                st.session_state.show_401k_roth_form = False
-                                st.rerun()
+                st.write("")
         
         # Settings section - only show if customization features are enabled
         if AppConfig.FEATURES.get('custom_categories', True) or AppConfig.FEATURES.get('custom_payment_methods', True):
@@ -952,10 +967,11 @@ class AddTransactionPage:
                         }
                         
                         # Get current user ID - require authentication
-                        user_id = AuthMiddleware.get_current_user_id()
-                        if not user_id:
+                        current_user = AuthMiddleware.get_current_user_id()
+                        if not current_user:
                             st.error("🔒 Please login to add transactions")
                             return
+                        user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
                         transaction_id = DatabaseService.add_transaction(transaction, user_id)
                         st.success(f"✅ Transaction added successfully!")
                         
@@ -1019,7 +1035,7 @@ class AddTransactionPage:
                                 'payment_method': payment_method
                             }
                             
-                            transaction_id = DatabaseService.add_transaction(transaction)
+                            from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                             st.success(f"✅ {description} added: ${amount}")
                             
                             # Clear all cached data to force refresh
@@ -1114,7 +1130,7 @@ class AddTransactionPage:
                         }
                         
                         try:
-                            transaction_id = DatabaseService.add_transaction(transaction)
+                            from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
                             st.success(f"✅ {description} added: ${amount:.2f} (ID: {transaction_id})")
                             st.rerun()
                         except Exception as e:

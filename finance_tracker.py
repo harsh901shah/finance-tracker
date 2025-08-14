@@ -12,6 +12,7 @@ from pages.dashboard_page import DashboardPage
 from pages.networth_page import NetWorthPage
 from pages.transaction_page import TransactionPage
 from pages.add_transaction_page import AddTransactionPage
+from pages.budget_page import BudgetPage
 from pages.login_page import LoginPage
 from services.database_service import DatabaseService
 from services.auth_service import AuthService
@@ -54,7 +55,8 @@ class FinanceApp:
             "Dashboard": DashboardPage,
             "Net Worth": NetWorthPage,
             "View Transactions": TransactionPage.show_list,
-            "Add Transaction": AddTransactionPage
+            "Add Transaction": AddTransactionPage,
+            "Budget": BudgetPage
         }
     
     def _initialize_database(self):
@@ -145,28 +147,12 @@ class FinanceApp:
                         selected_page = "Add Transaction"
                         st.session_state.current_page = "Add Transaction"
                         st.rerun()
-                    
-                    # Planning section - Budget and financial planning tools
-                    st.markdown('<div class="nav-section"><div class="nav-label">PLANNING</div></div>', unsafe_allow_html=True)
                     if st.sidebar.button("Budget", key="nav_Budget", use_container_width=True, type="primary" if current_page == "Budget" else "secondary"):
                         selected_page = "Budget"
                         st.session_state.current_page = "Budget"
                         st.rerun()
                     
-                    # Tools section - Administrative and utility functions
-                    st.markdown('<div class="nav-section"><div class="nav-label">TOOLS</div></div>', unsafe_allow_html=True)
-                    if st.sidebar.button("Upload Documents", key="nav_Upload_Documents", use_container_width=True, type="primary" if current_page == "Upload Documents" else "secondary"):
-                        selected_page = "Upload Documents"
-                        st.session_state.current_page = "Upload Documents"
-                        st.rerun()
-                    if st.sidebar.button("Settings", key="nav_Settings", use_container_width=True, type="primary" if current_page == "Settings" else "secondary"):
-                        selected_page = "Settings"
-                        st.session_state.current_page = "Settings"
-                        st.rerun()
-                    if st.sidebar.button("DB Viewer", key="nav_DB_Viewer", use_container_width=True, type="primary" if current_page == "DB Viewer" else "secondary"):
-                        selected_page = "DB Viewer"
-                        st.session_state.current_page = "DB Viewer"
-                        st.rerun()
+
                     
                     # Use current page for display
                     selected_page = current_page

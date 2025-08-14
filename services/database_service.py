@@ -246,19 +246,26 @@ class DatabaseService:
     
     # Asset methods
     @classmethod
-    def add_asset(cls, asset: Dict[str, Any]) -> int:
-        """Add an asset to the database"""
+    def add_asset(cls, asset: Dict[str, Any], user_id: str) -> int:
+        """Add an asset to the database with user isolation"""
         conn = cls.get_connection()
         cursor = conn.cursor()
         
+        # Add user_id column if it doesn't exist
+        cursor.execute("PRAGMA table_info(assets)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' not in columns:
+            cursor.execute('ALTER TABLE assets ADD COLUMN user_id TEXT')
+        
         cursor.execute('''
-        INSERT INTO assets (name, value, owner, asset_type)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO assets (name, value, owner, asset_type, user_id)
+        VALUES (?, ?, ?, ?, ?)
         ''', (
             asset.get('name'),
             asset.get('value'),
             asset.get('owner', 'Joint'),
-            asset.get('asset_type', 'Other')
+            asset.get('asset_type', 'Other'),
+            str(user_id)
         ))
         
         asset_id = cursor.lastrowid
@@ -268,15 +275,23 @@ class DatabaseService:
         return asset_id
     
     @classmethod
-    def get_assets(cls, asset_type: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get assets from the database, optionally filtered by type"""
+    def get_assets(cls, user_id: str, asset_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get assets from the database for a specific user, optionally filtered by type"""
         conn = cls.get_connection()
         cursor = conn.cursor()
         
+        # Add user_id column if it doesn't exist
+        cursor.execute("PRAGMA table_info(assets)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' not in columns:
+            cursor.execute('ALTER TABLE assets ADD COLUMN user_id TEXT')
+            cursor.execute('UPDATE assets SET user_id = ? WHERE user_id IS NULL', ('default_user',))
+            conn.commit()
+        
         if asset_type:
-            cursor.execute('SELECT * FROM assets WHERE asset_type = ?', (asset_type,))
+            cursor.execute('SELECT * FROM assets WHERE user_id = ? AND asset_type = ?', (str(user_id), asset_type))
         else:
-            cursor.execute('SELECT * FROM assets')
+            cursor.execute('SELECT * FROM assets WHERE user_id = ?', (str(user_id),))
             
         assets = [dict(row) for row in cursor.fetchall()]
         
@@ -308,19 +323,26 @@ class DatabaseService:
     
     # Liability methods
     @classmethod
-    def add_liability(cls, liability: Dict[str, Any]) -> int:
-        """Add a liability to the database"""
+    def add_liability(cls, liability: Dict[str, Any], user_id: str) -> int:
+        """Add a liability to the database with user isolation"""
         conn = cls.get_connection()
         cursor = conn.cursor()
         
+        # Add user_id column if it doesn't exist
+        cursor.execute("PRAGMA table_info(liabilities)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' not in columns:
+            cursor.execute('ALTER TABLE liabilities ADD COLUMN user_id TEXT')
+        
         cursor.execute('''
-        INSERT INTO liabilities (name, value, owner, liability_type)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO liabilities (name, value, owner, liability_type, user_id)
+        VALUES (?, ?, ?, ?, ?)
         ''', (
             liability.get('name'),
             liability.get('value'),
             liability.get('owner', 'Joint'),
-            liability.get('liability_type', 'Other')
+            liability.get('liability_type', 'Other'),
+            str(user_id)
         ))
         
         liability_id = cursor.lastrowid
@@ -330,15 +352,23 @@ class DatabaseService:
         return liability_id
     
     @classmethod
-    def get_liabilities(cls, liability_type: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get liabilities from the database, optionally filtered by type"""
+    def get_liabilities(cls, user_id: str, liability_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get liabilities from the database for a specific user, optionally filtered by type"""
         conn = cls.get_connection()
         cursor = conn.cursor()
         
+        # Add user_id column if it doesn't exist
+        cursor.execute("PRAGMA table_info(liabilities)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' not in columns:
+            cursor.execute('ALTER TABLE liabilities ADD COLUMN user_id TEXT')
+            cursor.execute('UPDATE liabilities SET user_id = ? WHERE user_id IS NULL', ('default_user',))
+            conn.commit()
+        
         if liability_type:
-            cursor.execute('SELECT * FROM liabilities WHERE liability_type = ?', (liability_type,))
+            cursor.execute('SELECT * FROM liabilities WHERE user_id = ? AND liability_type = ?', (str(user_id), liability_type))
         else:
-            cursor.execute('SELECT * FROM liabilities')
+            cursor.execute('SELECT * FROM liabilities WHERE user_id = ?', (str(user_id),))
             
         liabilities = [dict(row) for row in cursor.fetchall()]
         
@@ -347,19 +377,26 @@ class DatabaseService:
     
     # Real estate methods
     @classmethod
-    def add_real_estate(cls, property: Dict[str, Any]) -> int:
-        """Add a real estate property to the database"""
+    def add_real_estate(cls, property: Dict[str, Any], user_id: str) -> int:
+        """Add a real estate property to the database with user isolation"""
         conn = cls.get_connection()
         cursor = conn.cursor()
         
+        # Add user_id column if it doesn't exist
+        cursor.execute("PRAGMA table_info(real_estate)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' not in columns:
+            cursor.execute('ALTER TABLE real_estate ADD COLUMN user_id TEXT')
+        
         cursor.execute('''
-        INSERT INTO real_estate (name, current_value, purchase_value, owner)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO real_estate (name, current_value, purchase_value, owner, user_id)
+        VALUES (?, ?, ?, ?, ?)
         ''', (
             property.get('name'),
             property.get('current_value'),
             property.get('purchase_value', 0),
-            property.get('owner', 'Joint')
+            property.get('owner', 'Joint'),
+            str(user_id)
         ))
         
         property_id = cursor.lastrowid
@@ -369,12 +406,20 @@ class DatabaseService:
         return property_id
     
     @classmethod
-    def get_real_estate(cls) -> List[Dict[str, Any]]:
-        """Get all real estate properties from the database"""
+    def get_real_estate(cls, user_id: str) -> List[Dict[str, Any]]:
+        """Get all real estate properties from the database for a specific user"""
         conn = cls.get_connection()
         cursor = conn.cursor()
         
-        cursor.execute('SELECT * FROM real_estate')
+        # Add user_id column if it doesn't exist
+        cursor.execute("PRAGMA table_info(real_estate)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' not in columns:
+            cursor.execute('ALTER TABLE real_estate ADD COLUMN user_id TEXT')
+            cursor.execute('UPDATE real_estate SET user_id = ? WHERE user_id IS NULL', ('default_user',))
+            conn.commit()
+        
+        cursor.execute('SELECT * FROM real_estate WHERE user_id = ?', (str(user_id),))
         properties = [dict(row) for row in cursor.fetchall()]
         
         conn.close()

@@ -14,85 +14,36 @@ class DashboardPage:
     @classmethod
     def show(cls):
         """Display the dashboard page"""
-        # Apply custom CSS
-        cls._apply_custom_css()
+        # Apply world-class CSS
+        cls._apply_world_class_css()
         
         # Page header
         st.markdown("<h1 class='page-title'>Dashboard</h1>", unsafe_allow_html=True)
         st.markdown("<p class='page-subtitle'>Your financial overview</p>", unsafe_allow_html=True)
         
-        # Render filter controls
-        date_filter, filters, apply_filter = DashboardFilters.render_filter_controls()
+        # Compact filter bar
+        date_filter, filters, apply_filter = cls._render_compact_filter_bar()
         
         # Get transactions data (force refresh)
         transactions = cls._get_transactions_data()
         
-        # Summary cards
-        st.markdown("<div class='summary-cards'>", unsafe_allow_html=True)
-        col1, col2, col3, col4 = st.columns(4)
-        
-        # Only load data if filter is applied
+        # Load data by default, with filters if applied
         if apply_filter:
-            # Get real financial data with all filters
-            current_month_data = DashboardAnalytics.get_filtered_data(date_filter, filters)
+            current_month_data = cls._get_filtered_data(date_filter, filters)
         else:
-            # Show placeholder when filters not applied
-            current_month_data = {'income': 0, 'expenses': 0}
-            st.info("👆 Configure your filters and click 'Apply Filters' to view data")
+            current_month_data = cls._get_filtered_data()
         
         # Get trend data for comparison
-        trends = DashboardAnalytics.calculate_trends(date_filter, filters) if apply_filter else {}
+        trends = cls._calculate_trends(date_filter, filters) if apply_filter else {}
         
-        with col1:
-            income_trend = trends.get('income_trend', 0)
-            has_trend_data = trends.get('has_previous_data', False)
-            trend_text = f"{income_trend:+.1f}% vs prev period" if has_trend_data else "First period"
-            cls._summary_card("Income", f"${current_month_data['income']:,.2f}", trend_text, "neutral" if not has_trend_data else ("positive" if income_trend >= 0 else "negative"))
+        # Get additional analytics
+        if apply_filter:
+            analytics = cls._get_additional_analytics(date_filter, filters) if AppConfig.FEATURES.get('advanced_analytics', True) else {}
+        else:
+            analytics = cls._get_additional_analytics() if AppConfig.FEATURES.get('advanced_analytics', True) else {}
         
-        with col2:
-            expense_trend = trends.get('expense_trend', 0)
-            trend_text = f"{expense_trend:+.1f}% vs prev period" if has_trend_data else "First period"
-            cls._summary_card("Expenses", f"${current_month_data['expenses']:,.2f}", trend_text, "neutral" if not has_trend_data else ("negative" if expense_trend > 0 else "positive"))
-        
-        with col3:
-            net_income = current_month_data['income'] - current_month_data['expenses']
-            net_trend = trends.get('net_trend', 0)
-            trend_text = f"{net_trend:+.1f}% vs prev period" if has_trend_data else "First period"
-            cls._summary_card("Net Income", f"${net_income:,.2f}", trend_text, "neutral" if not has_trend_data else ("positive" if net_income >= 0 else "negative"))
-        
-        with col4:
-            savings_rate = (net_income / current_month_data['income'] * 100) if current_month_data['income'] > 0 else 0
-            savings_trend = trends.get('savings_trend', 0)
-            trend_text = f"{savings_trend:+.1f}% vs prev period" if has_trend_data else "First period"
-            cls._summary_card("Savings Rate", f"{savings_rate:.1f}%", trend_text, "neutral" if not has_trend_data else ("positive" if savings_trend >= 0 else "negative"))
-        
-        # Second row - Additional insights
-        col1, col2, col3, col4 = st.columns(4)
-        
-        # Get additional analytics - only if advanced analytics is enabled
-        analytics = DashboardAnalytics.get_additional_analytics(date_filter, filters) if (apply_filter and AppConfig.FEATURES.get('advanced_analytics', True)) else {}
-        
-        with col1:
-            transfers = analytics.get('transfers', 0)
-            transfer_count = analytics.get('transfer_count', 0)
-            cls._summary_card("Total Transfers", f"${transfers:,.2f}", f"{transfer_count} transactions", "neutral")
-        
-        with col2:
-            top_category = analytics.get('top_category', 'N/A')
-            top_amount = analytics.get('top_category_amount', 0)
-            cls._summary_card("Top Category", top_category, f"${top_amount:,.2f}", "neutral")
-        
-        with col3:
-            avg_transaction = analytics.get('avg_transaction', 0)
-            transaction_count = analytics.get('transaction_count', 0)
-            cls._summary_card("Avg Transaction", f"${avg_transaction:,.2f}", f"{transaction_count} total", "neutral")
-        
-        with col4:
-            top_payment = analytics.get('top_payment_method', 'N/A')
-            payment_count = analytics.get('top_payment_count', 0)
-            cls._summary_card("Most Used Payment", top_payment, f"{payment_count} times", "neutral")
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+        # World-class KPI grid
+        cls._render_kpi_grid(current_month_data, trends, analytics)
         
         # Cash flow chart
         st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
@@ -106,39 +57,95 @@ class DashboardPage:
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         st.markdown("</div>", unsafe_allow_html=True)
         
+        # Add equal height CSS for cards
+        st.markdown("""
+        <style>
+        .k-equal { display: flex; flex-direction: column; height: 100%; }
+        .k-equal .chart-container { flex: 1; display: flex; flex-direction: column; }
+        @media (max-width: 900px) {
+            div[data-testid="stHorizontalBlock"] > div { margin-bottom: 12px; }
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         # Bottom section with two columns
         col1, col2 = st.columns(2)
         
         # Spending by category
         with col1:
-            st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
-            st.markdown("<h2>Spending by Category</h2>", unsafe_allow_html=True)
+            st.markdown('<div class="k-equal">', unsafe_allow_html=True)
+            st.markdown("""
+            <div class='chart-container'>
+                <div style='display: flex; align-items: center; margin-bottom: 12px;'>
+                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 12px;'>
+                        <span style='font-size: 1.2rem;'>📊</span>
+                    </div>
+                    <div>
+                        <h2 style='margin: 0; font-size: 1.2rem; font-weight: 600; color: #1e293b;'>Spending by Category</h2>
+                        <p style='margin: 0; color: #64748b; font-size: 0.8rem;'>Current month breakdown</p>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
             
             # Get real spending by category data
             category_data = cls._get_real_category_data()
             
-            # Create spending by category chart
-            fig = cls._create_category_chart(category_data)
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            st.markdown("</div>", unsafe_allow_html=True)
+            if not category_data.empty:
+                # Create spending by category chart
+                fig = cls._create_category_chart(category_data)
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            else:
+                st.markdown("""
+                <div style='text-align: center; padding: 2rem; background: #f8fafc; border-radius: 12px; border: 2px dashed #e2e8f0; height: 360px; display: flex; flex-direction: column; justify-content: center;'>
+                    <h3 style='color: #64748b; margin-bottom: 1rem;'>📊 No Spending Data</h3>
+                    <p style='color: #64748b; margin: 0;'>Add expense transactions to see breakdown</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("</div></div>", unsafe_allow_html=True)
         
-        # Budget progress - only show if budget tracking is enabled
+        # Budget progress
         with col2:
+            st.markdown('<div class="k-equal">', unsafe_allow_html=True)
             if AppConfig.FEATURES.get('budget_tracking', True):
-                st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
-                st.markdown("<h2>Budget Progress</h2>", unsafe_allow_html=True)
+                st.markdown("""
+                <div class='chart-container'>
+                    <div style='display: flex; align-items: center; margin-bottom: 12px;'>
+                        <div style='background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 12px;'>
+                            <span style='font-size: 1.2rem;'>🎯</span>
+                        </div>
+                        <div>
+                            <h2 style='margin: 0; font-size: 1.2rem; font-weight: 600; color: #1e293b;'>Budget Progress</h2>
+                            <p style='margin: 0; color: #64748b; font-size: 0.8rem;'>Monthly budget tracking</p>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
                 
                 # Get real budget progress data
                 budget_data = cls._get_real_budget_data()
                 
-                # Create budget progress chart
-                fig = cls._create_budget_chart(budget_data)
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                if not budget_data.empty:
+                    # Create budget progress chart
+                    fig = cls._create_budget_chart(budget_data)
+                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                else:
+                    st.markdown("""
+                    <div style='text-align: center; padding: 2rem; background: #f8fafc; border-radius: 12px; border: 2px dashed #e2e8f0; height: 360px; display: flex; flex-direction: column; justify-content: center;'>
+                        <h3 style='color: #64748b; margin-bottom: 1rem;'>🎯 No Budget Set</h3>
+                        <p style='color: #64748b; margin: 0;'>Go to Budget Planning to set limits</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
                 st.markdown("</div>", unsafe_allow_html=True)
             else:
-                st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
-                st.info("📊 Budget tracking is currently disabled")
-                st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("""
+                <div class='chart-container'>
+                    <div style='height: 360px; display: flex; align-items: center; justify-content: center;'>
+                        <div>📊 Budget tracking is currently disabled</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
         
         # Recent transactions
         st.markdown("<div class='transactions-container'>", unsafe_allow_html=True)
@@ -152,25 +159,120 @@ class DashboardPage:
         st.markdown("</div>", unsafe_allow_html=True)
     
     @staticmethod
-    def _summary_card(title, value, change, change_type):
-        """Display a summary card with title, value, and change"""
-        if change_type == "positive":
-            change_color = "var(--positive-color)"
-            change_icon = "↑"
-        elif change_type == "negative":
-            change_color = "var(--negative-color)"
-            change_icon = "↓"
-        else:  # neutral
-            change_color = "var(--light-text-color)"
-            change_icon = "ℹ️"
+    def _render_compact_filter_bar():
+        """Render compact single-row filter bar"""
+        # Get filter controls once to avoid duplicate IDs
+        date_filter, filters, apply_filter = DashboardFilters.render_filter_controls()
+        return date_filter, filters, apply_filter
+    
+    @classmethod
+    def _render_kpi_grid(cls, current_month_data, trends, analytics):
+        """Render responsive KPI grid with world-class design"""
+        
+        # Calculate all KPI values (keeping original logic)
+        net_income = current_month_data['income'] - current_month_data['expenses']
+        savings_rate = (net_income / current_month_data['income'] * 100) if current_month_data['income'] > 0 else 0
+        
+        income_trend = trends.get('income_trend', 0)
+        expense_trend = trends.get('expense_trend', 0)
+        net_trend = trends.get('net_trend', 0)
+        savings_trend = trends.get('savings_trend', 0)
+        
+        has_trend_data = len(trends) > 0
+        
+        # KPI data array
+        kpis = [
+            {
+                'icon': '💰',
+                'title': 'Income',
+                'value': f"${current_month_data['income']:,.0f}",
+                'delta': income_trend if has_trend_data else None,
+                'delta_type': 'positive' if income_trend >= 0 else 'negative' if has_trend_data else 'neutral'
+            },
+            {
+                'icon': '💸',
+                'title': 'Expenses', 
+                'value': f"${current_month_data['expenses']:,.0f}",
+                'delta': expense_trend if has_trend_data else None,
+                'delta_type': 'negative' if expense_trend > 0 else 'positive' if has_trend_data else 'neutral'
+            },
+            {
+                'icon': '📈',
+                'title': 'Net Income',
+                'value': f"${net_income:,.0f}",
+                'delta': net_trend if has_trend_data else None,
+                'delta_type': 'positive' if net_income >= 0 else 'negative' if has_trend_data else 'neutral'
+            },
+            {
+                'icon': '🎯',
+                'title': 'Savings Rate',
+                'value': f"{savings_rate:.1f}%",
+                'delta': savings_trend if has_trend_data else None,
+                'delta_type': 'positive' if savings_trend >= 0 else 'negative' if has_trend_data else 'neutral'
+            },
+            {
+                'icon': '🔄',
+                'title': 'Transfers',
+                'value': f"${analytics.get('transfers', 0):,.0f}",
+                'delta': None,
+                'delta_type': 'neutral'
+            },
+            {
+                'icon': '🏆',
+                'title': 'Top Category',
+                'value': analytics.get('top_category', 'N/A'),
+                'delta': None,
+                'delta_type': 'neutral'
+            },
+            {
+                'icon': '📊',
+                'title': 'Avg Transaction',
+                'value': f"${analytics.get('avg_transaction', 0):,.0f}",
+                'delta': None,
+                'delta_type': 'neutral'
+            },
+            {
+                'icon': '💳',
+                'title': 'Payment Method',
+                'value': analytics.get('top_payment_method', 'N/A'),
+                'delta': None,
+                'delta_type': 'neutral'
+            }
+        ]
+        
+        # Render KPI cards in responsive grid
+        for i in range(0, len(kpis), 4):
+            cols = st.columns(4)
+            for j, col in enumerate(cols):
+                if i + j < len(kpis):
+                    with col:
+                        cls._render_kpi_card(kpis[i + j])
+    
+    @staticmethod
+    def _render_kpi_card(kpi):
+        """Render individual KPI card with world-class design"""
+        delta_html = ""
+        if kpi['delta'] is not None:
+            delta_color = {
+                'positive': '#00D924',
+                'negative': '#FF3B30', 
+                'neutral': '#8E8E93'
+            }[kpi['delta_type']]
+            
+            delta_icon = '↗' if kpi['delta_type'] == 'positive' else '↘' if kpi['delta_type'] == 'negative' else '→'
+            delta_html = f'<div class="kpi-delta" style="background-color: {delta_color}15; color: {delta_color};">{delta_icon} {abs(kpi["delta"]):.1f}%</div>'
+        
+        caption_text = "vs last period" if kpi['delta'] is not None else ""
         
         st.markdown(f"""
-        <div class="summary-card">
-            <div class="card-title">{title}</div>
-            <div class="card-value">{value}</div>
-            <div class="card-change" style="color: {change_color};">
-                {change_icon} {change}
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-icon">{kpi['icon']}</div>
+                <div class="kpi-title">{kpi['title']}</div>
             </div>
+            <div class="kpi-value">{kpi['value']}</div>
+            {delta_html}
+            <div class="kpi-caption">{caption_text}</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -178,9 +280,8 @@ class DashboardPage:
     def _get_transactions_data():
         """Get transactions data from the database"""
         try:
-            # Force fresh data load
+            # Force fresh data load with proper user isolation
             transactions = TransactionService.load_transactions()
-            print(f"Dashboard loaded {len(transactions)} transactions")
             return transactions
         except Exception as e:
             st.error(f"Error loading transactions: {str(e)}")
@@ -196,8 +297,6 @@ class DashboardPage:
                 start_date, end_date = date_filter
                 start_str = start_date.strftime('%Y-%m-%d')
                 end_str = end_date.strftime('%Y-%m-%d')
-            else:
-                current_month = datetime.now().strftime('%Y-%m')
             
             income = 0
             expenses = 0
@@ -208,13 +307,9 @@ class DashboardPage:
                 transaction_category = transaction.get('category', '')
                 transaction_payment = transaction.get('payment_method', '')
                 
-                # Apply all filters
-                # Date filter
+                # Apply date filter only if specified
                 if date_filter:
                     if not (start_str <= transaction_date <= end_str):
-                        continue
-                else:
-                    if not transaction_date.startswith(current_month):
                         continue
                 
                 # Transaction type filter
@@ -232,7 +327,8 @@ class DashboardPage:
                 amount = float(transaction.get('amount', 0))
                 transaction_type_lower = transaction_type.lower().strip()
                 
-                if transaction_type_lower in ['income']:
+                # Include pre-tax and Roth contributions as income since they represent earned money
+                if transaction_type_lower in ['income'] or (transaction_type_lower == 'transfer' and transaction_category.lower() in ['retirement', '401k', 'roth', 'pretax']):
                     income += abs(amount)
                 elif transaction_type_lower in ['expense']:
                     expenses += abs(amount)
@@ -252,8 +348,6 @@ class DashboardPage:
                 start_date, end_date = date_filter
                 start_str = start_date.strftime('%Y-%m-%d')
                 end_str = end_date.strftime('%Y-%m-%d')
-            else:
-                current_month = datetime.now().strftime('%Y-%m')
             
             transfers = 0
             transfer_count = 0
@@ -267,12 +361,9 @@ class DashboardPage:
                 transaction_category = transaction.get('category', '')
                 transaction_payment = transaction.get('payment_method', '')
                 
-                # Apply filters
+                # Apply date filter only if specified
                 if date_filter:
                     if not (start_str <= transaction_date <= end_str):
-                        continue
-                else:
-                    if not transaction_date.startswith(current_month):
                         continue
                 
                 if filters and filters.get('transaction_types') and transaction_type not in filters['transaction_types']:
@@ -362,7 +453,8 @@ class DashboardPage:
                         amount = float(transaction.get('amount', 0))
                         transaction_type = transaction.get('type', '').lower().strip()
                         
-                        if transaction_type in ['income']:
+                        # Include pre-tax and Roth contributions as income since they represent earned money
+                        if transaction_type in ['income'] or (transaction_type == 'transfer' and transaction.get('category', '').lower() in ['retirement', '401k', 'roth', 'pretax']):
                             monthly_data[month_key]['income'] += abs(amount)
                         elif transaction_type in ['expense']:
                             monthly_data[month_key]['expenses'] += abs(amount)
@@ -501,11 +593,12 @@ class DashboardPage:
         )])
         
         fig.update_layout(
-            margin=dict(l=20, r=20, t=20, b=20),
+            height=360,
+            margin=dict(l=10, r=10, t=10, b=10),
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=-0.2,
+                y=-0.1,
                 xanchor="center",
                 x=0.5
             ),
@@ -589,7 +682,8 @@ class DashboardPage:
             ))
         
         fig.update_layout(
-            margin=dict(l=20, r=20, t=20, b=20),
+            height=360,
+            margin=dict(l=10, r=10, t=10, b=10),
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             font=dict(
@@ -607,8 +701,7 @@ class DashboardPage:
             yaxis=dict(
                 showgrid=False,
                 zeroline=False
-            ),
-            height=350
+            )
         )
         
         return fig
@@ -715,123 +808,170 @@ class DashboardPage:
         )
     
     @staticmethod
-    def _apply_custom_css():
-        """Apply custom CSS for styling"""
+    def _apply_world_class_css():
+        """Apply world-class CSS inspired by Stripe, Coinbase, Robinhood"""
         st.markdown("""
         <style>
+        /* World-class design system */
         :root {
-            --primary-color: #6200EA;
-            --secondary-color: #03DAC6;
-            --background-color: #F5F7FA;
-            --card-background: #FFFFFF;
-            --text-color: #333333;
-            --light-text-color: #666666;
-            --border-color: #E0E0E0;
-            --positive-color: #4CAF50;
-            --negative-color: #F44336;
+            --surface-primary: #FFFFFF;
+            --surface-secondary: #FAFBFC;
+            --border-light: #E6E8EB;
+            --text-primary: #0A0B0D;
+            --text-secondary: #5A5D63;
+            --text-tertiary: #8B949E;
+            --positive: #00D924;
+            --negative: #FF3B30;
+            --neutral: #8E8E93;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --radius-md: 12px;
+            --spacing-xs: 8px;
+            --spacing-sm: 12px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
         }
         
-        /* Page title styling */
+        /* Page styling */
         .page-title {
             font-size: 2rem;
             font-weight: 600;
-            color: var(--text-color);
+            color: var(--text-primary);
             margin-bottom: 0;
+            letter-spacing: -0.02em;
         }
         
         .page-subtitle {
-            color: var(--light-text-color);
-            margin-bottom: 2rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-lg);
+            font-size: 1rem;
         }
         
-        /* Summary cards styling */
-        .summary-cards {
+        /* Remove filter bar container styling since we're not using it */
+        
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        @media (max-width: 1024px) {
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* KPI Card */
+        .kpi-card {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+            height: 140px;
             display: flex;
-            gap: 20px;
-            margin-bottom: 2rem;
+            flex-direction: column;
+            justify-content: space-between;
         }
         
-        .summary-card {
-            background-color: var(--card-background);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s;
+        .kpi-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
         }
         
-        .summary-card:hover {
-            transform: translateY(-5px);
+        .kpi-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-xs);
         }
         
-        .card-title {
-            color: var(--light-text-color);
-            font-size: 0.9rem;
-            margin-bottom: 10px;
+        .kpi-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--surface-secondary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
         }
         
-        .card-value {
-            color: var(--text-color);
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        
-        .card-change {
-            font-size: 0.9rem;
+        .kpi-title {
+            font-size: 0.875rem;
             font-weight: 500;
+            color: var(--text-secondary);
+            letter-spacing: -0.01em;
         }
         
-        /* Chart container styling */
+        .kpi-value {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+            margin: var(--spacing-xs) 0;
+        }
+        
+        .kpi-delta {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-xs);
+        }
+        
+        .kpi-caption {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin-top: auto;
+        }
+        
+        /* Chart containers */
         .chart-container {
-            background-color: var(--card-background);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 2rem;
+            background: var(--surface-primary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: var(--spacing-md);
         }
         
         .chart-container h2 {
-            font-size: 1.2rem;
+            font-size: 1.25rem;
             font-weight: 600;
-            color: var(--text-color);
-            margin-bottom: 1rem;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-md);
+            letter-spacing: -0.01em;
         }
         
-        /* Transactions container styling */
-        .transactions-container {
-            background-color: var(--card-background);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        }
-        
-        .transactions-container h2 {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--text-color);
-            margin-bottom: 1rem;
-        }
-        
-        /* Streamlit component styling */
+        /* Streamlit overrides */
         div[data-testid="stVerticalBlock"] {
-            gap: 0.5rem;
+            gap: var(--spacing-sm);
         }
         
-        div[data-testid="stSelectbox"] label {
+        .stButton > button {
+            height: 40px;
+            border-radius: 8px;
             font-weight: 500;
         }
         
-        div[data-testid="stDateInput"] label {
-            font-weight: 500;
+        .stSelectbox > div > div {
+            height: 40px;
         }
         
-        /* Dataframe styling */
-        div[data-testid="stDataFrame"] {
-            border: none !important;
-        }
-        
-        div[data-testid="stDataFrame"] > div {
-            border: none !important;
+        .stDateInput > div > div {
+            height: 40px;
         }
         </style>
         """, unsafe_allow_html=True)

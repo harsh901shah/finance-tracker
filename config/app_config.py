@@ -15,8 +15,8 @@ class AppConfig:
     
     # Default categories - can be extended by user preferences
     DEFAULT_CATEGORIES = [
-        "Salary", "Investment", "Tax", "Retirement", "Healthcare",
-        "Housing", "Transportation", "Utilities", "Shopping", 
+        "Salary", "Investment", "Retirement", "401k", "Roth", "PreTax", "Healthcare",
+        "Housing", "Transportation", "Utilities", "Shopping", "Tax", 
         "Credit Card", "Savings", "Transfer", "Food", "Entertainment", "Other"
     ]
     
