@@ -12,10 +12,6 @@ from pages.dashboard_page import DashboardPage
 from pages.networth_page import NetWorthPage
 from pages.transaction_page import TransactionPage
 from pages.add_transaction_page import AddTransactionPage
-from pages.budget_page import BudgetPage
-from pages.settings_page import SettingsPage
-from pages.document_upload_page import DocumentUploadPage
-from pages.db_viewer_page import DBViewerPage
 from pages.login_page import LoginPage
 from services.database_service import DatabaseService
 from services.auth_service import AuthService
@@ -55,11 +51,7 @@ class FinanceApp:
             "Dashboard": DashboardPage,
             "Net Worth": NetWorthPage,
             "View Transactions": TransactionPage.show_list,
-            "Add Transaction": AddTransactionPage,
-            "Budget": BudgetPage,
-            "Upload Documents": DocumentUploadPage,
-            "Settings": SettingsPage,
-            "DB Viewer": DBViewerPage
+            "Add Transaction": AddTransactionPage
         }
     
     def _initialize_database(self):
@@ -107,16 +99,16 @@ class FinanceApp:
             is_authenticated = LoginPage.verify_authentication()
             
             if not is_authenticated:
-                # Show login page if not authenticated
+                # Show login page if not authenticated - NO SIDEBAR
                 is_authenticated = LoginPage.show()
                 
             if is_authenticated:
-                # User is authenticated, show the main app
+                # User is authenticated, show the main app with sidebar
                 
                 # Apply custom CSS for sidebar
                 self._apply_sidebar_css()
                 
-                # Sidebar for navigation
+                # Sidebar for navigation - ONLY when authenticated
                 with st.sidebar:
                     st.markdown('<div class="sidebar-header"><h1>Finance Tracker</h1><p>Welcome, ' + st.session_state.user['full_name'] + '</p></div>', unsafe_allow_html=True)
                     

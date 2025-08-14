@@ -503,7 +503,7 @@ class DatabaseService:
             cursor.execute('''
             INSERT OR REPLACE INTO user_preferences (key, user_id, value, updated_at)
             VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-            ''', (key, user_id, value_json))
+            ''', (key, str(user_id), value_json))
             
             conn.commit()
             return True
@@ -524,7 +524,18 @@ class DatabaseService:
             conn = cls.get_connection()
             cursor = conn.cursor()
             
-            cursor.execute('SELECT value FROM user_preferences WHERE key = ? AND user_id = ?', (key, user_id))
+            # Create table if it doesn't exist
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                key TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                value TEXT NOT NULL,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (key, user_id)
+            )
+            ''')
+            
+            cursor.execute('SELECT value FROM user_preferences WHERE key = ? AND user_id = ?', (key, str(user_id)))
             result = cursor.fetchone()
             
             if result:

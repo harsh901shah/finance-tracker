@@ -1,0 +1,11 @@
+[server]
+# Disable automatic page discovery to prevent direct URL access to page files
+enableStaticServing = false
+
+[client]
+# Disable automatic page navigation
+showSidebarNavigation = false
+
+[ui]
+# Hide the default sidebar navigation
+hideTopBar = false
