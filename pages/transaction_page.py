@@ -5,7 +5,7 @@ from datetime import datetime
 from services.financial_data_service import TransactionService
 from services.database_service import DatabaseService
 from services.tooltip_service import TooltipService
-from services.auth_service import AuthMiddleware
+from utils.auth_middleware import AuthMiddleware
 
 class TransactionPage:
     """Transaction page for adding and viewing transactions"""
