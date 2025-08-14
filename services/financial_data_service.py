@@ -8,19 +8,37 @@ class TransactionService:
     """Service for handling transaction data"""
     
     @staticmethod
-    def add_transaction(transaction: Dict[str, Any]) -> int:
+    def add_transaction(transaction: Dict[str, Any], user_id: str = None) -> int:
         """Add a transaction to the database"""
-        return DatabaseService.add_transaction(transaction)
+        from utils.auth_middleware import AuthMiddleware
+        
+        if not user_id:
+            current_user = AuthMiddleware.get_current_user_id()
+            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+        
+        return DatabaseService.add_transaction(transaction, user_id)
     
     @staticmethod
-    def load_transactions() -> List[Dict[str, Any]]:
-        """Load all transactions from the database"""
-        return DatabaseService.get_transactions()
+    def load_transactions(user_id: str = None) -> List[Dict[str, Any]]:
+        """Load all transactions from the database for a specific user"""
+        from utils.auth_middleware import AuthMiddleware
+        
+        if not user_id:
+            current_user = AuthMiddleware.get_current_user_id()
+            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+        
+        return DatabaseService.get_transactions(user_id)
     
     @staticmethod
-    def get_statement_metadata() -> Optional[Dict[str, Any]]:
+    def get_statement_metadata(user_id: str = None) -> Optional[Dict[str, Any]]:
         """Get the latest statement metadata from transactions"""
-        transactions = DatabaseService.get_transactions()
+        from utils.auth_middleware import AuthMiddleware
+        
+        if not user_id:
+            current_user = AuthMiddleware.get_current_user_id()
+            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+        
+        transactions = DatabaseService.get_transactions(user_id)
         
         # Look for statement metadata in transactions
         for transaction in transactions:
@@ -92,27 +110,33 @@ class NetWorthService:
     NETWORTH_FILE = 'networth.json'
     
     @classmethod
-    def save_networth(cls, networth_data: Dict[str, Any]) -> bool:
-        """Save net worth data to database"""
+    def save_networth(cls, networth_data: Dict[str, Any], user_id: str = None) -> bool:
+        """Save net worth data to database with user isolation"""
         try:
+            from utils.auth_middleware import AuthMiddleware
+            
+            if not user_id:
+                current_user = AuthMiddleware.get_current_user_id()
+                user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+            
             # Save investments
             investments = networth_data.get('investments', {})
             for asset_type, assets in investments.items():
                 for asset in assets:
                     asset['asset_type'] = asset_type
-                    DatabaseService.add_asset(asset)
+                    DatabaseService.add_asset(asset, user_id)
             
             # Save debts
             debts = networth_data.get('debts', {})
             for liability_type, liabilities in debts.items():
                 for liability in liabilities:
                     liability['liability_type'] = liability_type
-                    DatabaseService.add_liability(liability)
+                    DatabaseService.add_liability(liability, user_id)
             
             # Save real estate
             real_estate = networth_data.get('real_estate', [])
             for property in real_estate:
-                DatabaseService.add_real_estate(property)
+                DatabaseService.add_real_estate(property, user_id)
             
             return True
         except Exception as e:
@@ -120,9 +144,15 @@ class NetWorthService:
             return False
     
     @classmethod
-    def load_networth(cls) -> Dict[str, Any]:
-        """Load net worth data from database"""
+    def load_networth(cls, user_id: str = None) -> Dict[str, Any]:
+        """Load net worth data from database for a specific user"""
         try:
+            from utils.auth_middleware import AuthMiddleware
+            
+            if not user_id:
+                current_user = AuthMiddleware.get_current_user_id()
+                user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+            
             networth_data = {
                 'investments': {
                     'stocks': [],
@@ -141,7 +171,7 @@ class NetWorthService:
             }
             
             # Load assets
-            assets = DatabaseService.get_assets()
+            assets = DatabaseService.get_assets(user_id)
             for asset in assets:
                 asset_type = asset.get('asset_type')
                 
@@ -159,7 +189,7 @@ class NetWorthService:
                     networth_data['investments'][target_type].append(asset_copy)
             
             # Load liabilities
-            liabilities = DatabaseService.get_liabilities()
+            liabilities = DatabaseService.get_liabilities(user_id)
             for liability in liabilities:
                 liability_type = liability.get('liability_type')
                 if liability_type in networth_data['debts']:
@@ -170,7 +200,7 @@ class NetWorthService:
                     networth_data['debts'][liability_type].append(liability_copy)
             
             # Load real estate
-            real_estate = DatabaseService.get_real_estate()
+            real_estate = DatabaseService.get_real_estate(user_id)
             networth_data['real_estate'] = real_estate
             
             return networth_data

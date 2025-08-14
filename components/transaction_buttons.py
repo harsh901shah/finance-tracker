@@ -44,11 +44,11 @@ class TransactionButtons:
             
             with col2:
                 TransactionButtons._render_button_with_form("🏦 401K Pretax", "401k_pretax", 
-                    "401K Pretax", 800.0, "Income", "Retirement", "Direct Deposit")
+                    "401K Pretax", 800.0, "Transfer", "401k", "Direct Deposit")
             
             with col3:
                 TransactionButtons._render_button_with_form("🏥 HSA", "hsa", 
-                    "HSA", 300.0, "Income", "Healthcare", "Direct Deposit")
+                    "HSA", 300.0, "Transfer", "PreTax", "Direct Deposit")
     
     @staticmethod
     def render_housing_section():
@@ -137,7 +137,7 @@ class TransactionButtons:
                 TransactionButtons._render_button_with_form("🌏 Money to India", "money_india", 
                     "Money Sent India", 1000.0, "Transfer", "Transfer", "Bank Transfer")
                 TransactionButtons._render_button_with_form("🏦 401k Roth", "401k_roth", 
-                    "401k Roth Contribution", 500.0, "Investment", "Retirement", "Direct Deposit")
+                    "401k Roth Contribution", 500.0, "Transfer", "Roth", "Direct Deposit")
     
     @staticmethod
     def _render_button_with_form(button_text, form_key, description, default_amount, 

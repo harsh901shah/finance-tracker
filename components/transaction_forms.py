@@ -67,8 +67,13 @@ class TransactionFormHandler:
             }
             
             # Get current user ID or use default for now
-            user_id = AuthMiddleware.get_current_user_id() or 'default_user'
+            current_user = AuthMiddleware.get_current_user_id()
+            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
             transaction_id = DatabaseService.add_transaction(transaction, user_id)
+            
+            # Auto-update net worth based on transaction
+            TransactionFormHandler._update_networth_from_transaction(transaction, user_id)
+            
             st.success(f"✅ {description} added: ${amount:.2f}")
             
             # Clear session states
@@ -83,7 +88,8 @@ class TransactionFormHandler:
         """Check for duplicate transactions"""
         try:
             # Get current user ID or use default for now
-            user_id = AuthMiddleware.get_current_user_id() or 'default_user'
+            current_user = AuthMiddleware.get_current_user_id()
+            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
             existing_transactions = DatabaseService.get_transactions(user_id)
             
             for txn in existing_transactions:
@@ -96,6 +102,56 @@ class TransactionFormHandler:
         except Exception as e:
             AppLogger.log_error("Error checking duplicate transaction", e, show_user=False)
             return False
+    
+    @staticmethod
+    def _update_networth_from_transaction(transaction, user_id):
+        """Automatically update net worth based on transaction type"""
+        try:
+            from services.database_service import DatabaseService
+            
+            amount = float(transaction.get('amount', 0))
+            transaction_type = transaction.get('type', '').lower()
+            description = transaction.get('description', '').lower()
+            
+            assets = DatabaseService.get_assets(user_id)
+            
+            # Income - add to checking account
+            if transaction_type == 'income':
+                for asset in assets:
+                    if 'checking' in asset.get('name', '').lower():
+                        new_value = asset.get('value', 0) + amount
+                        DatabaseService.update_asset(asset['id'], new_value, transaction.get('date'))
+                        return
+            
+            # Expense - subtract from checking account
+            elif transaction_type == 'expense':
+                for asset in assets:
+                    if 'checking' in asset.get('name', '').lower():
+                        new_value = max(0, asset.get('value', 0) - amount)
+                        DatabaseService.update_asset(asset['id'], new_value, transaction.get('date'))
+                        return
+            
+            # Transfer - handle specific transfers
+            elif transaction_type == 'transfer':
+                if '401k' in description:
+                    for asset in assets:
+                        if '401k' in asset.get('name', '').lower():
+                            new_value = asset.get('value', 0) + amount
+                            DatabaseService.update_asset(asset['id'], new_value, transaction.get('date'))
+                        elif 'checking' in asset.get('name', '').lower():
+                            new_value = max(0, asset.get('value', 0) - amount)
+                            DatabaseService.update_asset(asset['id'], new_value, transaction.get('date'))
+                elif 'investment' in description:
+                    for asset in assets:
+                        if 'investment' in asset.get('name', '').lower():
+                            new_value = asset.get('value', 0) + amount
+                            DatabaseService.update_asset(asset['id'], new_value, transaction.get('date'))
+                        elif 'checking' in asset.get('name', '').lower():
+                            new_value = max(0, asset.get('value', 0) - amount)
+                            DatabaseService.update_asset(asset['id'], new_value, transaction.get('date'))
+            
+        except Exception as e:
+            print(f"Warning: Could not update net worth: {e}")
     
     @staticmethod
     def _clear_session_states():
@@ -210,7 +266,14 @@ class UtilitiesFormHandler:
                 'payment_method': payment_method
             }
             
-            transaction_id = DatabaseService.add_transaction(transaction)
+            # Get current user ID
+            current_user = AuthMiddleware.get_current_user_id()
+            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+            transaction_id = DatabaseService.add_transaction(transaction, user_id)
+            
+            # Auto-update net worth based on transaction
+            TransactionFormHandler._update_networth_from_transaction(transaction, user_id)
+            
             st.success(f"✅ {utility_type} added: ${amount:.2f}")
             
             # Clear session states

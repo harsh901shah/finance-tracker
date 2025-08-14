@@ -204,20 +204,24 @@ class TransactionPage:
             standard_columns = ['date', 'description', 'amount', 'type', 'category', 'payment_method']
             display_columns = [col for col in standard_columns if col in display_df.columns]
             
-            # Display transactions table
-            st.dataframe(
-                display_df[display_columns],
-                column_config={
-                    "date": st.column_config.DateColumn("Date"),
-                    "description": st.column_config.TextColumn("Description", width="large"),
-                    "amount": st.column_config.NumberColumn("Amount ($)", format="$%.2f"),
-                    "type": st.column_config.TextColumn("Type"),
-                    "category": st.column_config.TextColumn("Category"),
-                    "payment_method": st.column_config.TextColumn("Payment Method")
-                },
-                hide_index=True,
-                use_container_width=True
-            )
+            # Display transactions table with delete buttons
+            for idx, row in display_df.iterrows():
+                col1, col2 = st.columns([8, 1])
+                
+                with col1:
+                    # Display transaction info
+                    st.write(f"**{row['date']}** | {row['description']} | **${row['amount']:.2f}** | {row['type']} | {row['category']} | {row['payment_method']}")
+                
+                with col2:
+                    # Delete button for each transaction
+                    if st.button("🗑️", key=f"delete_{row['id']}", help="Delete transaction"):
+                        if TransactionPage._delete_transaction(row['id']):
+                            st.success("Transaction deleted!")
+                            st.rerun()
+                        else:
+                            st.error("Failed to delete transaction")
+                
+                st.divider()
             
             # Bulk operations
             st.subheader("🔧 Bulk Operations")
@@ -293,6 +297,16 @@ class TransactionPage:
         else:
             st.info("No transactions match your filters.")
             st.info("💡 Try adjusting your search terms or filters.")
+    
+    @staticmethod
+    def _delete_transaction(transaction_id):
+        """Delete a transaction by ID"""
+        try:
+            from services.database_service import DatabaseService
+            return DatabaseService.delete_transaction(transaction_id)
+        except Exception as e:
+            st.error(f"Error deleting transaction: {e}")
+            return False
     
     @staticmethod
     def _show_transaction_summary(df):
