@@ -1,8 +1,12 @@
 import json
 import os
+import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
+from functools import lru_cache
 from services.database_service import DatabaseService
+
+logger = logging.getLogger(__name__)
 
 class TransactionService:
     """Service for handling transaction data"""
@@ -19,15 +23,118 @@ class TransactionService:
         return DatabaseService.add_transaction(transaction, user_id)
     
     @staticmethod
-    def load_transactions(user_id: str = None) -> List[Dict[str, Any]]:
-        """Load all transactions from the database for a specific user"""
+    def load_transactions(user_id: str = None, use_cache: bool = True) -> List[Dict[str, Any]]:
+        """Load all transactions from the database for a specific user with caching"""
         from utils.auth_middleware import AuthMiddleware
         
         if not user_id:
             current_user = AuthMiddleware.get_current_user_id()
             user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
         
-        return DatabaseService.get_transactions(user_id)
+        # Use cached version if available and recent
+        if use_cache:
+            cached_data = TransactionService._get_cached_transactions(user_id)
+            if cached_data:
+                return cached_data
+        
+        transactions = DatabaseService.get_transactions(user_id)
+        
+        # Cache the results
+        if use_cache:
+            TransactionService._cache_transactions(user_id, transactions)
+        
+        return transactions
+    
+    @staticmethod
+    def _get_cached_transactions(user_id: str) -> Optional[List[Dict[str, Any]]]:
+        """Get cached transactions if they exist and are recent.
+        
+        Args:
+            user_id: The user identifier
+            
+        Returns:
+            List of cached transactions or None if cache is invalid/expired
+        """
+        import streamlit as st
+        
+        cache_key = f"transactions_cache_{user_id}"
+        cache_time_key = f"transactions_cache_time_{user_id}"
+        
+        if cache_key in st.session_state and cache_time_key in st.session_state:
+            cache_time = st.session_state[cache_time_key]
+            # Cache valid for 5 minutes
+            if datetime.now() - cache_time < timedelta(minutes=5):
+                return st.session_state[cache_key]
+        
+        return None
+    
+    @staticmethod
+    def _cache_transactions(user_id: str, transactions: List[Dict[str, Any]]):
+        """Cache transactions data with timestamp for TTL management.
+        
+        Args:
+            user_id: The user identifier
+            transactions: List of transaction data to cache
+        """
+        import streamlit as st
+        
+        cache_key = f"transactions_cache_{user_id}"
+        cache_time_key = f"transactions_cache_time_{user_id}"
+        
+        st.session_state[cache_key] = transactions
+        st.session_state[cache_time_key] = datetime.now()
+    
+    @staticmethod
+    def clear_cache(user_id: str = None):
+        """Clear cached transaction data for a specific user.
+        
+        Args:
+            user_id: The user identifier (optional, will get from auth if not provided)
+        """
+        import streamlit as st
+        from utils.auth_middleware import AuthMiddleware
+        
+        if not user_id:
+            current_user = AuthMiddleware.get_current_user_id()
+            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+        
+        cache_key = f"transactions_cache_{user_id}"
+        cache_time_key = f"transactions_cache_time_{user_id}"
+        
+        if cache_key in st.session_state:
+            del st.session_state[cache_key]
+        if cache_time_key in st.session_state:
+            del st.session_state[cache_time_key]
+    
+    @staticmethod
+    @lru_cache(maxsize=128)
+    def get_transaction_summary(user_id: str, date_range: str = "current_month") -> Dict[str, float]:
+        """Get optimized transaction summary with caching"""
+        transactions = TransactionService.load_transactions(user_id, use_cache=True)
+        
+        # Filter by date range
+        if date_range == "current_month":
+            current_month = datetime.now().strftime('%Y-%m')
+            filtered_transactions = [t for t in transactions if t.get('date', '').startswith(current_month)]
+        elif date_range == "last_30_days":
+            cutoff_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+            filtered_transactions = [t for t in transactions if t.get('date', '') >= cutoff_date]
+        else:
+            filtered_transactions = transactions
+        
+        # Calculate summary
+        summary = {
+            'total_income': sum(float(t.get('amount', 0)) for t in filtered_transactions if t.get('type') == 'Income'),
+            'total_expenses': sum(float(t.get('amount', 0)) for t in filtered_transactions if t.get('type') == 'Expense'),
+            'total_taxes': sum(float(t.get('amount', 0)) for t in filtered_transactions if t.get('type') == 'Tax'),
+            'total_investments': sum(float(t.get('amount', 0)) for t in filtered_transactions if t.get('type') == 'Investment'),
+            'total_transfers': sum(float(t.get('amount', 0)) for t in filtered_transactions if t.get('type') == 'Transfer'),
+            'transaction_count': len(filtered_transactions)
+        }
+        
+        summary['net_cash_flow'] = summary['total_income'] - summary['total_expenses'] - summary['total_taxes'] - summary['total_investments'] - summary['total_transfers']
+        
+        return summary
     
     @staticmethod
     def get_statement_metadata(user_id: str = None) -> Optional[Dict[str, Any]]:
@@ -79,8 +186,11 @@ class BudgetService:
                 DatabaseService.add_budget(budget_item)
             
             return True
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Invalid budget data: {str(e)}")
+            return False
         except Exception as e:
-            print(f"Error saving budget: {e}")
+            logger.error(f"Unexpected error saving budget: {str(e)}")
             return False
     
     @classmethod
@@ -100,8 +210,11 @@ class BudgetService:
                 budget_data[item['category']] = item['amount']
             
             return budget_data
+        except (ValueError, KeyError) as e:
+            logger.warning(f"Invalid budget data format: {str(e)}")
+            return {}
         except Exception as e:
-            print(f"Error loading budget: {e}")
+            logger.error(f"Unexpected error loading budget data: {str(e)}")
             return {}
 
 class NetWorthService:
@@ -139,8 +252,11 @@ class NetWorthService:
                 DatabaseService.add_real_estate(property, user_id)
             
             return True
+        except (ValueError, TypeError, KeyError) as e:
+            logger.warning(f"Invalid net worth data: {str(e)}")
+            return False
         except Exception as e:
-            print(f"Error saving net worth data: {e}")
+            logger.error(f"Unexpected error saving net worth: {str(e)}")
             return False
     
     @classmethod
@@ -205,5 +321,5 @@ class NetWorthService:
             
             return networth_data
         except Exception as e:
-            print(f"Error loading net worth data: {e}")
+            logger.error(f"Error loading net worth data: {str(e)}")
             return {}

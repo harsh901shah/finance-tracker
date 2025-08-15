@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime, date
 from services.database_service import DatabaseService
+from services.tooltip_service import TooltipService
 from components.transaction_forms import TransactionFormHandler, UtilitiesFormHandler
 from components.user_preferences import UserPreferencesManager
 from config.app_config import AppConfig
@@ -12,6 +13,13 @@ class AddTransactionPage:
         AddTransactionPage._apply_custom_css()
         
         st.header("💰 Add Transaction")
+        
+        # Show contextual help
+        TooltipService.show_contextual_help('add_transaction')
+        
+        # Show feature announcement
+        with st.expander("🎉 What's New", expanded=False):
+            st.markdown(TooltipService.get_feature_announcement())
         
         # Quick add buttons for your specific categories
         st.subheader("Quick Add")
@@ -933,19 +941,19 @@ class AddTransactionPage:
             
             with col1:
                 transaction_date = st.date_input("Date", value=date.today())
-                transaction_type = st.selectbox("Type", ["Income", "Expense", "Investment", "Transfer"])
+                transaction_type = st.selectbox("Type", ["Income", "Expense", "Investment", "Transfer"], help=TooltipService.get_tooltip_text('income'))
                 amount = st.number_input("Amount ($)", min_value=0.01, value=100.0, step=0.01)
             
             with col2:
                 description = st.text_input("Description", placeholder="Enter description...")
                 # Use custom categories and payment methods
                 all_categories = UserPreferencesManager.get_all_categories()
-                category = st.selectbox("Category", all_categories)
+                category = st.selectbox("Category", all_categories, help="Choose the most specific category for better tracking")
                 
                 all_payment_methods = UserPreferencesManager.get_all_payment_methods()
                 default_payment = UserPreferencesManager.get_default_payment_method()
                 default_index = all_payment_methods.index(default_payment) if default_payment in all_payment_methods else 0
-                payment_method = st.selectbox("Payment Method", all_payment_methods, index=default_index)
+                payment_method = st.selectbox("Payment Method", all_payment_methods, index=default_index, help=TooltipService.get_tooltip_text('credit_card'))
             
             if st.form_submit_button("Add Transaction", type="primary", use_container_width=True):
                 # Input validation

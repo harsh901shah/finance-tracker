@@ -3,6 +3,9 @@ Login page module for the Finance Tracker application.
 
 This module provides the main authentication page with login and registration functionality,
 inspirational finance quotes, and a visually appealing landing page experience.
+
+NOTE: All Streamlit session keys for Finance Tracker are now prefixed with 'ft_' 
+for clarity and isolation (e.g., ft_user, ft_authenticated).
 """
 
 import streamlit as st
@@ -55,9 +58,9 @@ class LoginPage:
             AuthService.initialize_auth_database()
             
             # Check if user is already logged in
-            if "user" in st.session_state and st.session_state.user:
+            if "ft_user" in st.session_state and st.session_state.ft_user:
                 # Display welcome message for logged-in users
-                st.success(f"Welcome back, {st.session_state.user['full_name']}!")
+                st.success(f"Welcome back, {st.session_state.ft_user['full_name']}!")
                 
                 # Logout button
                 if st.button("Logout", type="primary"):
@@ -156,14 +159,14 @@ class LoginPage:
         """
         try:
             # Logout user via AuthService
-            if "user" in st.session_state and st.session_state.user and "session_token" in st.session_state.user:
-                username = st.session_state.user.get("username", "Unknown")
-                AuthService.logout(st.session_state.user["session_token"])
+            if "ft_user" in st.session_state and st.session_state.ft_user and "session_token" in st.session_state.ft_user:
+                username = st.session_state.ft_user.get("username", "Unknown")
+                AuthService.logout(st.session_state.ft_user["session_token"])
                 cls.logger.info(f"User logged out: {username}")
             
             # Clear session state
-            st.session_state.user = None
-            st.session_state.authenticated = False
+            st.session_state.ft_user = None
+            st.session_state.ft_authenticated = False
             st.rerun()
         except Exception as e:
             cls.logger.error(f"Error during logout: {str(e)}")
@@ -181,27 +184,27 @@ class LoginPage:
             bool: True if authenticated, False otherwise
         """
         try:
-            if "user" in st.session_state and st.session_state.user and "session_token" in st.session_state.user:
+            if "ft_user" in st.session_state and st.session_state.ft_user and "session_token" in st.session_state.ft_user:
                 # Verify session token via AuthService
-                valid, user_data = AuthService.verify_session(st.session_state.user["session_token"])
+                valid, user_data = AuthService.verify_session(st.session_state.ft_user["session_token"])
                 
                 if valid:
                     # Update user data in session state
-                    st.session_state.user = user_data
-                    st.session_state.authenticated = True
+                    st.session_state.ft_user = user_data
+                    st.session_state.ft_authenticated = True
                     return True
                 else:
                     # Clear invalid session
-                    st.session_state.user = None
-                    st.session_state.authenticated = False
+                    st.session_state.ft_user = None
+                    st.session_state.ft_authenticated = False
                     cls.logger.info("Session verification failed")
             
             return False
         except Exception as e:
             cls.logger.error(f"Error verifying authentication: {str(e)}")
             # Clear session on error
-            st.session_state.user = None
-            st.session_state.authenticated = False
+            st.session_state.ft_user = None
+            st.session_state.ft_authenticated = False
             return False
     
     @staticmethod

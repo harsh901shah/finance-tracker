@@ -3,6 +3,9 @@ Authentication UI components for the Finance Tracker application.
 
 This module provides reusable UI components for user authentication, including
 login and registration forms, form handling, and authentication state management.
+
+NOTE: All Streamlit session keys for Finance Tracker are now prefixed with 'ft_' 
+for clarity and isolation (e.g., ft_user, ft_authenticated).
 """
 
 import streamlit as st
@@ -176,8 +179,8 @@ class AuthComponents:
                 st.success(message)
                 
                 # Store user data in session state for persistent authentication
-                st.session_state.user = user_data
-                st.session_state.authenticated = True
+                st.session_state.ft_user = user_data
+                st.session_state.ft_authenticated = True
                 
                 # Log success
                 if logger:

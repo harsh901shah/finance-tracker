@@ -1,8 +1,20 @@
 import sqlite3
 import os
 import json
+import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+
+# Configure logging to file and stdout for diagnostics and auditing
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/database.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 class DatabaseService:
     """Service for handling database operations"""
@@ -16,10 +28,17 @@ class DatabaseService:
             conn = sqlite3.connect(cls.DB_FILE)
             conn.row_factory = sqlite3.Row  # Return rows as dictionaries
             return conn
-        except sqlite3.Error as e:
-            raise IOError(f"Database connection error: {str(e)}")
+        except sqlite3.OperationalError as e:
+            # Catch OperationalError for database file permission issues
+            logger.error(f"Database file access error: {str(e)}")
+            raise IOError(f"Cannot access database file. Check permissions: {str(e)}")
+        except sqlite3.DatabaseError as e:
+            # Handle database corruption or format errors separately for better diagnostics
+            logger.error(f"Database corruption or format error: {str(e)}")
+            raise IOError(f"Database file may be corrupted: {str(e)}")
         except Exception as e:
-            raise Exception(f"Unexpected error connecting to database: {str(e)}")
+            logger.error(f"Unexpected database connection error: {str(e)}")
+            raise ConnectionError(f"Failed to connect to database: {str(e)}")
     
     @classmethod
     def initialize_database(cls):
@@ -112,15 +131,58 @@ class DatabaseService:
             )
             ''')
             
+            # Create indexes for performance optimization
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_date ON transactions(user_id, date DESC)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_type ON transactions(user_id, type)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_category ON transactions(user_id, category)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_assets_user ON assets(user_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_liabilities_user ON liabilities(user_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_real_estate_user ON real_estate(user_id)')
+            
+            # Create audit log table for sensitive actions
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                table_name TEXT NOT NULL,
+                record_id INTEGER,
+                old_data TEXT,
+                new_data TEXT,
+                timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_user_timestamp ON audit_log(user_id, timestamp DESC)')
+            
+            # Create undo snapshots table
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS undo_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                data TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                expires_at TEXT NOT NULL
+            )
+            ''')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_undo_user_created ON undo_snapshots(user_id, created_at DESC)')
+            
             conn.commit()
-        except sqlite3.Error as e:
+        except sqlite3.OperationalError as e:
             if conn:
                 conn.rollback()
-            raise IOError(f"Database initialization error: {str(e)}")
+            logger.error(f"Database schema creation failed: {str(e)}")
+            raise IOError(f"Failed to create database tables. Check disk space and permissions: {str(e)}")
+        except sqlite3.DatabaseError as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"Database integrity error during initialization: {str(e)}")
+            raise IOError(f"Database integrity error: {str(e)}")
         except Exception as e:
             if conn:
                 conn.rollback()
-            raise Exception(f"Unexpected error initializing database: {str(e)}")
+            logger.error(f"Unexpected error during database initialization: {str(e)}")
+            raise RuntimeError(f"Database initialization failed: {str(e)}")
         finally:
             if conn:
                 conn.close()
@@ -189,17 +251,31 @@ class DatabaseService:
             transaction_id = cursor.lastrowid
             conn.commit()
             return transaction_id
-        except sqlite3.Error as e:
+        except sqlite3.IntegrityError as e:
+            # Handle constraint violations (duplicate keys, foreign key errors)
             if conn:
                 conn.rollback()
-            raise IOError(f"Database error adding transaction: {str(e)}")
+            logger.warning(f"Transaction data integrity violation: {str(e)}")
+            raise ValueError(f"Invalid transaction data: {str(e)}")
+        except sqlite3.OperationalError as e:
+            # Catch OperationalError for database file permission issues
+            if conn:
+                conn.rollback()
+            logger.error(f"Database operation failed for transaction: {str(e)}")
+            raise IOError(f"Database operation failed. Try again: {str(e)}")
         except ValueError as e:
-            # Re-raise validation errors
+            logger.warning(f"Transaction validation failed: {str(e)}")
             raise
+        except json.JSONEncodeError as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"Failed to serialize transaction data: {str(e)}")
+            raise ValueError(f"Invalid transaction data format: {str(e)}")
         except Exception as e:
             if conn:
                 conn.rollback()
-            raise Exception(f"Error adding transaction: {str(e)}")
+            logger.error(f"Unexpected error adding transaction: {str(e)}")
+            raise RuntimeError(f"Failed to save transaction: {str(e)}")
         finally:
             if conn:
                 conn.close()
@@ -231,18 +307,58 @@ class DatabaseService:
         return transactions
     
     @classmethod
-    def delete_transaction(cls, transaction_id: int) -> bool:
-        """Delete a transaction from the database"""
+    def delete_transaction(cls, transaction_id: int, user_id: str) -> bool:
+        """Delete a transaction from the database with audit logging"""
         conn = cls.get_connection()
         cursor = conn.cursor()
         
-        cursor.execute('DELETE FROM transactions WHERE id = ?', (transaction_id,))
-        deleted = cursor.rowcount > 0
+        # Get transaction data before deletion for audit log
+        cursor.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, user_id))
+        transaction_data = cursor.fetchone()
+        
+        if transaction_data:
+            # Log the deletion
+            cls._log_audit_action(user_id, 'DELETE', 'transactions', transaction_id, dict(transaction_data), None)
+            
+            cursor.execute('DELETE FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, user_id))
+            deleted = cursor.rowcount > 0
+        else:
+            deleted = False
         
         conn.commit()
         conn.close()
         
         return deleted
+    
+    @classmethod
+    def bulk_delete_transactions(cls, transaction_ids: List[int], user_id: str) -> int:
+        """Delete multiple transactions with audit logging"""
+        conn = cls.get_connection()
+        cursor = conn.cursor()
+        deleted_count = 0
+        
+        try:
+            for transaction_id in transaction_ids:
+                # Get transaction data before deletion
+                cursor.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, user_id))
+                transaction_data = cursor.fetchone()
+                
+                if transaction_data:
+                    # Log the deletion
+                    cls._log_audit_action(user_id, 'DELETE', 'transactions', transaction_id, dict(transaction_data), None)
+                    
+                    cursor.execute('DELETE FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, user_id))
+                    if cursor.rowcount > 0:
+                        deleted_count += 1
+            
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+        
+        return deleted_count
     
     # Asset methods
     @classmethod
@@ -314,9 +430,17 @@ class DatabaseService:
             updated = cursor.rowcount > 0
             conn.commit()
             return updated
+        except sqlite3.IntegrityError as e:
+            conn.rollback()
+            logger.warning(f"Asset update integrity violation: {str(e)}")
+            return False
+        except sqlite3.OperationalError as e:
+            conn.rollback()
+            logger.error(f"Asset update operation failed: {str(e)}")
+            return False
         except Exception as e:
             conn.rollback()
-            print(f"Error updating asset: {e}")
+            logger.error(f"Unexpected error updating asset: {str(e)}")
             return False
         finally:
             conn.close()
@@ -448,8 +572,16 @@ class DatabaseService:
             
             budget_id = cursor.lastrowid
             conn.commit()
+        except sqlite3.IntegrityError as e:
+            logger.warning(f"Budget constraint violation: {str(e)}")
+            conn.rollback()
+            budget_id = 0
+        except sqlite3.OperationalError as e:
+            logger.error(f"Budget operation failed: {str(e)}")
+            conn.rollback()
+            budget_id = 0
         except Exception as e:
-            print(f"Error adding budget: {e}")
+            logger.error(f"Unexpected error adding budget: {str(e)}")
             conn.rollback()
             budget_id = 0
         finally:
@@ -502,9 +634,17 @@ class DatabaseService:
             statement_id = cursor.lastrowid
             conn.commit()
             return statement_id
+        except sqlite3.IntegrityError as e:
+            conn.rollback()
+            logger.info(f"Statement already processed: {str(e)}")
+            return 0
+        except sqlite3.OperationalError as e:
+            conn.rollback()
+            logger.error(f"Statement operation failed: {str(e)}")
+            return 0
         except Exception as e:
             conn.rollback()
-            print(f"Error adding statement record: {e}")
+            logger.error(f"Unexpected error adding statement: {str(e)}")
             return 0
         finally:
             conn.close()
@@ -552,10 +692,20 @@ class DatabaseService:
             
             conn.commit()
             return True
+        except sqlite3.OperationalError as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"User preference operation failed: {str(e)}")
+            return False
+        except json.JSONEncodeError as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"Failed to serialize preference data: {str(e)}")
+            return False
         except Exception as e:
             if conn:
                 conn.rollback()
-            print(f"Error saving user preference: {e}")
+            logger.error(f"Unexpected error saving user preference: {str(e)}")
             return False
         finally:
             if conn:
@@ -588,9 +738,149 @@ class DatabaseService:
                 return json.loads(result[0])
             else:
                 return default_value
+        except sqlite3.OperationalError as e:
+            logger.error(f"User preference retrieval failed: {str(e)}")
+            return default_value
+        except json.JSONDecodeError as e:
+            logger.warning(f"Corrupted preference data for key {key}: {str(e)}")
+            return default_value
         except Exception as e:
-            print(f"Error getting user preference: {e}")
+            logger.error(f"Unexpected error getting user preference: {str(e)}")
             return default_value
         finally:
             if conn:
                 conn.close()
+    @classmethod
+    def _log_audit_action(cls, user_id: str, action: str, table_name: str, record_id: int, old_data: Dict = None, new_data: Dict = None):
+        """Log audit action for sensitive operations"""
+        conn = cls.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+            INSERT INTO audit_log (user_id, action, table_name, record_id, old_data, new_data)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                user_id,
+                action,
+                table_name,
+                record_id,
+                json.dumps(old_data) if old_data else None,
+                json.dumps(new_data) if new_data else None
+            ))
+            conn.commit()
+        except sqlite3.OperationalError as e:
+            logger.error(f"Audit logging failed: {str(e)}")
+        except json.JSONEncodeError as e:
+            logger.error(f"Failed to serialize audit data: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error in audit logging: {str(e)}")
+        finally:
+            conn.close()
+    
+    @classmethod
+    def get_audit_log(cls, user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get audit log entries for a user"""
+        conn = cls.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT * FROM audit_log 
+        WHERE user_id = ? 
+        ORDER BY timestamp DESC 
+        LIMIT ?
+        ''', (user_id, limit))
+        
+        audit_entries = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
+        return audit_entries
+    
+    @classmethod
+    def create_undo_snapshot(cls, user_id: str, action: str, data: Dict) -> int:
+        """Create undo snapshot for destructive actions"""
+        conn = cls.get_connection()
+        cursor = conn.cursor()
+        
+        # Table already created in initialize_database
+        
+        # Set expiration to 24 hours from now
+        from datetime import datetime, timedelta
+        expires_at = (datetime.now() + timedelta(hours=24)).isoformat()
+        
+        cursor.execute('''
+        INSERT INTO undo_snapshots (user_id, action, data, expires_at)
+        VALUES (?, ?, ?, ?)
+        ''', (user_id, action, json.dumps(data), expires_at))
+        
+        snapshot_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return snapshot_id
+    
+    @classmethod
+    def get_undo_snapshots(cls, user_id: str) -> List[Dict[str, Any]]:
+        """Get available undo snapshots for user"""
+        conn = cls.get_connection()
+        cursor = conn.cursor()
+        
+        # Clean up expired snapshots first
+        cursor.execute('DELETE FROM undo_snapshots WHERE expires_at < datetime("now")')
+        
+        cursor.execute('''
+        SELECT * FROM undo_snapshots 
+        WHERE user_id = ? 
+        ORDER BY created_at DESC
+        ''', (user_id,))
+        
+        snapshots = [dict(row) for row in cursor.fetchall()]
+        conn.commit()
+        conn.close()
+        
+        return snapshots
+    
+    @classmethod
+    def restore_from_undo(cls, snapshot_id: int, user_id: str) -> bool:
+        """Restore data from undo snapshot"""
+        conn = cls.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Get snapshot data
+            cursor.execute('SELECT * FROM undo_snapshots WHERE id = ? AND user_id = ?', (snapshot_id, user_id))
+            snapshot = cursor.fetchone()
+            
+            if not snapshot:
+                return False
+            
+            data = json.loads(snapshot['data'])
+            action = snapshot['action']
+            
+            if action == 'DELETE_TRANSACTION':
+                # Restore deleted transaction
+                cls.add_transaction(data, user_id)
+            elif action == 'BULK_DELETE_TRANSACTIONS':
+                # Restore multiple deleted transactions
+                for transaction in data['transactions']:
+                    cls.add_transaction(transaction, user_id)
+            
+            # Remove the used snapshot
+            cursor.execute('DELETE FROM undo_snapshots WHERE id = ?', (snapshot_id,))
+            conn.commit()
+            return True
+            
+        except sqlite3.OperationalError as e:
+            conn.rollback()
+            logger.error(f"Undo operation failed: {str(e)}")
+            return False
+        except json.JSONDecodeError as e:
+            conn.rollback()
+            logger.error(f"Corrupted undo data: {str(e)}")
+            return False
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Unexpected error during undo: {str(e)}")
+            return False
+        finally:
+            conn.close()
