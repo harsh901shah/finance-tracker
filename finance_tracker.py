@@ -113,6 +113,10 @@ class FinanceApp:
             if is_authenticated:
                 # User is authenticated, show the main app with sidebar
                 
+                # Get current user for all operations
+                current_user = AuthMiddleware.get_current_user_id()
+                user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+                
                 # Apply custom CSS for sidebar
                 self._apply_sidebar_css()
                 
@@ -170,11 +174,12 @@ class FinanceApp:
                     
                     # End of navigation
                     
-                    # Debug mode toggle (hidden feature)
-                    if st.sidebar.checkbox("Debug Mode", value=False, help="Show performance metrics"):
-                        st.session_state.debug_mode = True
-                    else:
-                        st.session_state.debug_mode = False
+                    # Settings section
+                    st.markdown('<div class="nav-section"><div class="nav-label">SETTINGS</div></div>', unsafe_allow_html=True)
+                    
+                    # Debug mode toggle
+                    debug_mode = st.sidebar.checkbox("🔧 Debug Mode", value=st.session_state.get('debug_mode', False), help="Show performance metrics and technical details")
+                    st.session_state.debug_mode = debug_mode
                     
                     # Logout button
                     st.markdown('<div class="logout-section"></div>', unsafe_allow_html=True)
@@ -195,10 +200,6 @@ class FinanceApp:
                         
                         st.rerun()
             
-                # Show onboarding for new users
-                current_user = AuthMiddleware.get_current_user_id()
-                user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
-                
                 # Show onboarding checklist for new users
                 if OnboardingService.should_show_onboarding(user_id):
                     with st.expander("🚀 Getting Started", expanded=True):
@@ -253,7 +254,7 @@ class FinanceApp:
                         
                         # Show performance info in debug mode
                         if st.session_state.get('debug_mode', False):
-                            st.caption(f"⚡ Page loaded in {load_time:.2f}s")
+                            st.success(f"⚡ Page loaded in {load_time:.2f}s | 🔧 Debug Mode Active")
                     
                     except Exception as page_error:
                         # Page-specific error handling

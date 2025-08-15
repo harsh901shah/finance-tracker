@@ -135,6 +135,19 @@ class DatabaseService:
             ''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_user_timestamp ON audit_log(user_id, timestamp DESC)')
             
+            # Create undo snapshots table
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS undo_snapshots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                action TEXT NOT NULL,
+                data TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                expires_at TEXT NOT NULL
+            )
+            ''')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_undo_user_created ON undo_snapshots(user_id, created_at DESC)')
+            
             conn.commit()
         except sqlite3.Error as e:
             if conn:
@@ -705,17 +718,7 @@ class DatabaseService:
         conn = cls.get_connection()
         cursor = conn.cursor()
         
-        # Create undo_snapshots table if it doesn't exist
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS undo_snapshots (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            action TEXT NOT NULL,
-            data TEXT NOT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            expires_at TEXT NOT NULL
-        )
-        ''')
+        # Table already created in initialize_database
         
         # Set expiration to 24 hours from now
         from datetime import datetime, timedelta
