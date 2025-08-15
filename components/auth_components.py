@@ -176,8 +176,8 @@ class AuthComponents:
                 st.success(message)
                 
                 # Store user data in session state for persistent authentication
-                st.session_state.user = user_data
-                st.session_state.authenticated = True
+                st.session_state.ft_user = user_data
+                st.session_state.ft_authenticated = True
                 
                 # Log success
                 if logger:

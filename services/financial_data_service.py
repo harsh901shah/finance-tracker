@@ -1,9 +1,12 @@
 import json
 import os
+import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from functools import lru_cache
 from services.database_service import DatabaseService
+
+logger = logging.getLogger(__name__)
 
 class TransactionService:
     """Service for handling transaction data"""
@@ -167,8 +170,11 @@ class BudgetService:
                 DatabaseService.add_budget(budget_item)
             
             return True
+        except ValueError as e:
+            logger.warning(f"Invalid budget data: {str(e)}")
+            return False
         except Exception as e:
-            print(f"Error saving budget: {e}")
+            logger.error(f"Unexpected error saving budget: {str(e)}")
             return False
     
     @classmethod
@@ -189,7 +195,7 @@ class BudgetService:
             
             return budget_data
         except Exception as e:
-            print(f"Error loading budget: {e}")
+            logger.error(f"Error loading budget data: {str(e)}")
             return {}
 
 class NetWorthService:
@@ -227,8 +233,11 @@ class NetWorthService:
                 DatabaseService.add_real_estate(property, user_id)
             
             return True
+        except ValueError as e:
+            logger.warning(f"Invalid net worth data: {str(e)}")
+            return False
         except Exception as e:
-            print(f"Error saving net worth data: {e}")
+            logger.error(f"Unexpected error saving net worth: {str(e)}")
             return False
     
     @classmethod
@@ -293,5 +302,5 @@ class NetWorthService:
             
             return networth_data
         except Exception as e:
-            print(f"Error loading net worth data: {e}")
+            logger.error(f"Error loading net worth data: {str(e)}")
             return {}

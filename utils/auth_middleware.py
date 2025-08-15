@@ -21,34 +21,32 @@ class AuthMiddleware:
     @staticmethod
     def is_authenticated():
         """Check if user is authenticated"""
-        return (st.session_state.get('authenticated', False) and 
-                ('user_id' in st.session_state or 'user' in st.session_state))
+        return (st.session_state.get('ft_authenticated', False) and 
+                ('ft_user_id' in st.session_state or 'ft_user' in st.session_state))
     
     @staticmethod
     def get_current_user_id():
         """Get current authenticated user ID"""
         if AuthMiddleware.is_authenticated():
-            # Check for user_id first, then fallback to user
-            if 'user_id' in st.session_state:
-                return st.session_state.user_id
-            elif 'user' in st.session_state:
-                return st.session_state.user
+            # Check for ft_user_id first, then fallback to ft_user
+            if 'ft_user_id' in st.session_state:
+                return st.session_state.ft_user_id
+            elif 'ft_user' in st.session_state:
+                return st.session_state.ft_user
         return None
     
     @staticmethod
     def set_user_session(user_id, username=None):
         """Set user session after successful login"""
-        st.session_state.user_id = user_id
-        st.session_state.username = username or user_id
+        st.session_state.ft_user_id = user_id
+        st.session_state.ft_username = username or user_id
     
     @staticmethod
     def clear_user_session():
         """Clear user session on logout"""
-        if 'user_id' in st.session_state:
-            del st.session_state.user_id
-        if 'username' in st.session_state:
-            del st.session_state.username
-        # Clear any other user-related session data for complete logout
-        keys_to_clear = [k for k in st.session_state.keys() if k.startswith('user_') or k.startswith('onboarding_')]
-        for key in keys_to_clear:
+        # Clear all app data except safe UI preferences
+        safe_keys = {'theme', 'language', 'ui_preferences'}
+        keys_to_remove = [key for key in st.session_state.keys() 
+                        if not key.startswith('st.') and key not in safe_keys]
+        for key in keys_to_remove:
             del st.session_state[key]

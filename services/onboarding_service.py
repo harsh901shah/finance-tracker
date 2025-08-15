@@ -2,9 +2,12 @@
 User Onboarding Service for guiding new users through the application
 """
 import streamlit as st
+import logging
 from typing import Dict, Any, List
 from services.database_service import DatabaseService
 from services.tooltip_service import TooltipService
+
+logger = logging.getLogger(__name__)
 
 class OnboardingService:
     """Service for managing user onboarding experience"""
@@ -36,10 +39,13 @@ class OnboardingService:
             return False
         
         # Show if user has no transactions and hasn't completed onboarding
-        from services.financial_data_service import TransactionService
-        transactions = TransactionService.load_transactions(user_id)
-        
-        return len(transactions) < 3  # Show onboarding if user has fewer than 3 transactions
+        try:
+            from services.financial_data_service import TransactionService
+            transactions = TransactionService.load_transactions(user_id)
+            return len(transactions) < 3  # Show onboarding if user has fewer than 3 transactions
+        except Exception as e:
+            logger.warning(f"Could not check transaction count for onboarding: {str(e)}")
+            return True  # Show onboarding if we can't determine transaction count
     
     @classmethod
     def show_onboarding_flow(cls, user_id: str, current_page: str = None):

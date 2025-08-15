@@ -1,8 +1,20 @@
 import sqlite3
 import os
 import json
+import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/database.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 class DatabaseService:
     """Service for handling database operations"""
@@ -16,10 +28,15 @@ class DatabaseService:
             conn = sqlite3.connect(cls.DB_FILE)
             conn.row_factory = sqlite3.Row  # Return rows as dictionaries
             return conn
-        except sqlite3.Error as e:
-            raise IOError(f"Database connection error: {str(e)}")
+        except sqlite3.OperationalError as e:
+            logger.error(f"Database file access error: {str(e)}")
+            raise IOError(f"Cannot access database file. Check permissions: {str(e)}")
+        except sqlite3.DatabaseError as e:
+            logger.error(f"Database corruption or format error: {str(e)}")
+            raise IOError(f"Database file may be corrupted: {str(e)}")
         except Exception as e:
-            raise Exception(f"Unexpected error connecting to database: {str(e)}")
+            logger.error(f"Unexpected database connection error: {str(e)}")
+            raise ConnectionError(f"Failed to connect to database: {str(e)}")
     
     @classmethod
     def initialize_database(cls):
@@ -149,14 +166,21 @@ class DatabaseService:
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_undo_user_created ON undo_snapshots(user_id, created_at DESC)')
             
             conn.commit()
-        except sqlite3.Error as e:
+        except sqlite3.OperationalError as e:
             if conn:
                 conn.rollback()
-            raise IOError(f"Database initialization error: {str(e)}")
+            logger.error(f"Database schema creation failed: {str(e)}")
+            raise IOError(f"Failed to create database tables. Check disk space and permissions: {str(e)}")
+        except sqlite3.DatabaseError as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"Database integrity error during initialization: {str(e)}")
+            raise IOError(f"Database integrity error: {str(e)}")
         except Exception as e:
             if conn:
                 conn.rollback()
-            raise Exception(f"Unexpected error initializing database: {str(e)}")
+            logger.error(f"Unexpected error during database initialization: {str(e)}")
+            raise RuntimeError(f"Database initialization failed: {str(e)}")
         finally:
             if conn:
                 conn.close()
@@ -225,17 +249,29 @@ class DatabaseService:
             transaction_id = cursor.lastrowid
             conn.commit()
             return transaction_id
-        except sqlite3.Error as e:
+        except sqlite3.IntegrityError as e:
             if conn:
                 conn.rollback()
-            raise IOError(f"Database error adding transaction: {str(e)}")
+            logger.warning(f"Transaction data integrity violation: {str(e)}")
+            raise ValueError(f"Invalid transaction data: {str(e)}")
+        except sqlite3.OperationalError as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"Database operation failed for transaction: {str(e)}")
+            raise IOError(f"Database operation failed. Try again: {str(e)}")
         except ValueError as e:
-            # Re-raise validation errors
+            logger.warning(f"Transaction validation failed: {str(e)}")
             raise
+        except json.JSONEncodeError as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"Failed to serialize transaction data: {str(e)}")
+            raise ValueError(f"Invalid transaction data format: {str(e)}")
         except Exception as e:
             if conn:
                 conn.rollback()
-            raise Exception(f"Error adding transaction: {str(e)}")
+            logger.error(f"Unexpected error adding transaction: {str(e)}")
+            raise RuntimeError(f"Failed to save transaction: {str(e)}")
         finally:
             if conn:
                 conn.close()
@@ -390,9 +426,17 @@ class DatabaseService:
             updated = cursor.rowcount > 0
             conn.commit()
             return updated
+        except sqlite3.IntegrityError as e:
+            conn.rollback()
+            logger.warning(f"Asset update integrity violation: {str(e)}")
+            return False
+        except sqlite3.OperationalError as e:
+            conn.rollback()
+            logger.error(f"Asset update operation failed: {str(e)}")
+            return False
         except Exception as e:
             conn.rollback()
-            print(f"Error updating asset: {e}")
+            logger.error(f"Unexpected error updating asset: {str(e)}")
             return False
         finally:
             conn.close()
@@ -524,8 +568,16 @@ class DatabaseService:
             
             budget_id = cursor.lastrowid
             conn.commit()
+        except sqlite3.IntegrityError as e:
+            logger.warning(f"Budget constraint violation: {str(e)}")
+            conn.rollback()
+            budget_id = 0
+        except sqlite3.OperationalError as e:
+            logger.error(f"Budget operation failed: {str(e)}")
+            conn.rollback()
+            budget_id = 0
         except Exception as e:
-            print(f"Error adding budget: {e}")
+            logger.error(f"Unexpected error adding budget: {str(e)}")
             conn.rollback()
             budget_id = 0
         finally:
@@ -578,9 +630,17 @@ class DatabaseService:
             statement_id = cursor.lastrowid
             conn.commit()
             return statement_id
+        except sqlite3.IntegrityError as e:
+            conn.rollback()
+            logger.info(f"Statement already processed: {str(e)}")
+            return 0
+        except sqlite3.OperationalError as e:
+            conn.rollback()
+            logger.error(f"Statement operation failed: {str(e)}")
+            return 0
         except Exception as e:
             conn.rollback()
-            print(f"Error adding statement record: {e}")
+            logger.error(f"Unexpected error adding statement: {str(e)}")
             return 0
         finally:
             conn.close()
@@ -628,10 +688,20 @@ class DatabaseService:
             
             conn.commit()
             return True
+        except sqlite3.OperationalError as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"User preference operation failed: {str(e)}")
+            return False
+        except json.JSONEncodeError as e:
+            if conn:
+                conn.rollback()
+            logger.error(f"Failed to serialize preference data: {str(e)}")
+            return False
         except Exception as e:
             if conn:
                 conn.rollback()
-            print(f"Error saving user preference: {e}")
+            logger.error(f"Unexpected error saving user preference: {str(e)}")
             return False
         finally:
             if conn:
@@ -664,8 +734,14 @@ class DatabaseService:
                 return json.loads(result[0])
             else:
                 return default_value
+        except sqlite3.OperationalError as e:
+            logger.error(f"User preference retrieval failed: {str(e)}")
+            return default_value
+        except json.JSONDecodeError as e:
+            logger.warning(f"Corrupted preference data for key {key}: {str(e)}")
+            return default_value
         except Exception as e:
-            print(f"Error getting user preference: {e}")
+            logger.error(f"Unexpected error getting user preference: {str(e)}")
             return default_value
         finally:
             if conn:
@@ -689,8 +765,12 @@ class DatabaseService:
                 json.dumps(new_data) if new_data else None
             ))
             conn.commit()
+        except sqlite3.OperationalError as e:
+            logger.error(f"Audit logging failed: {str(e)}")
+        except json.JSONEncodeError as e:
+            logger.error(f"Failed to serialize audit data: {str(e)}")
         except Exception as e:
-            print(f"Error logging audit action: {e}")
+            logger.error(f"Unexpected error in audit logging: {str(e)}")
         finally:
             conn.close()
     
@@ -786,9 +866,17 @@ class DatabaseService:
             conn.commit()
             return True
             
+        except sqlite3.OperationalError as e:
+            conn.rollback()
+            logger.error(f"Undo operation failed: {str(e)}")
+            return False
+        except json.JSONDecodeError as e:
+            conn.rollback()
+            logger.error(f"Corrupted undo data: {str(e)}")
+            return False
         except Exception as e:
             conn.rollback()
-            print(f"Error restoring from undo: {e}")
+            logger.error(f"Unexpected error during undo: {str(e)}")
             return False
         finally:
             conn.close()
