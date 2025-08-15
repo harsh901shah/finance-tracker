@@ -3,6 +3,9 @@ Login page module for the Finance Tracker application.
 
 This module provides the main authentication page with login and registration functionality,
 inspirational finance quotes, and a visually appealing landing page experience.
+
+NOTE: All Streamlit session keys for Finance Tracker are now prefixed with 'ft_' 
+for clarity and isolation (e.g., ft_user, ft_authenticated).
 """
 
 import streamlit as st

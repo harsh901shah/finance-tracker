@@ -47,7 +47,14 @@ class TransactionService:
     
     @staticmethod
     def _get_cached_transactions(user_id: str) -> Optional[List[Dict[str, Any]]]:
-        """Get cached transactions if they exist and are recent"""
+        """Get cached transactions if they exist and are recent.
+        
+        Args:
+            user_id: The user identifier
+            
+        Returns:
+            List of cached transactions or None if cache is invalid/expired
+        """
         import streamlit as st
         
         cache_key = f"transactions_cache_{user_id}"
@@ -63,7 +70,12 @@ class TransactionService:
     
     @staticmethod
     def _cache_transactions(user_id: str, transactions: List[Dict[str, Any]]):
-        """Cache transactions data"""
+        """Cache transactions data with timestamp for TTL management.
+        
+        Args:
+            user_id: The user identifier
+            transactions: List of transaction data to cache
+        """
         import streamlit as st
         
         cache_key = f"transactions_cache_{user_id}"
@@ -74,7 +86,11 @@ class TransactionService:
     
     @staticmethod
     def clear_cache(user_id: str = None):
-        """Clear cached transaction data"""
+        """Clear cached transaction data for a specific user.
+        
+        Args:
+            user_id: The user identifier (optional, will get from auth if not provided)
+        """
         import streamlit as st
         from utils.auth_middleware import AuthMiddleware
         
@@ -170,7 +186,7 @@ class BudgetService:
                 DatabaseService.add_budget(budget_item)
             
             return True
-        except ValueError as e:
+        except (ValueError, TypeError) as e:
             logger.warning(f"Invalid budget data: {str(e)}")
             return False
         except Exception as e:
@@ -194,8 +210,11 @@ class BudgetService:
                 budget_data[item['category']] = item['amount']
             
             return budget_data
+        except (ValueError, KeyError) as e:
+            logger.warning(f"Invalid budget data format: {str(e)}")
+            return {}
         except Exception as e:
-            logger.error(f"Error loading budget data: {str(e)}")
+            logger.error(f"Unexpected error loading budget data: {str(e)}")
             return {}
 
 class NetWorthService:
@@ -233,7 +252,7 @@ class NetWorthService:
                 DatabaseService.add_real_estate(property, user_id)
             
             return True
-        except ValueError as e:
+        except (ValueError, TypeError, KeyError) as e:
             logger.warning(f"Invalid net worth data: {str(e)}")
             return False
         except Exception as e:

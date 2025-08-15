@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-# Configure logging
+# Configure logging to file and stdout for diagnostics and auditing
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -29,9 +29,11 @@ class DatabaseService:
             conn.row_factory = sqlite3.Row  # Return rows as dictionaries
             return conn
         except sqlite3.OperationalError as e:
+            # Catch OperationalError for database file permission issues
             logger.error(f"Database file access error: {str(e)}")
             raise IOError(f"Cannot access database file. Check permissions: {str(e)}")
         except sqlite3.DatabaseError as e:
+            # Handle database corruption or format errors separately for better diagnostics
             logger.error(f"Database corruption or format error: {str(e)}")
             raise IOError(f"Database file may be corrupted: {str(e)}")
         except Exception as e:
@@ -250,11 +252,13 @@ class DatabaseService:
             conn.commit()
             return transaction_id
         except sqlite3.IntegrityError as e:
+            # Handle constraint violations (duplicate keys, foreign key errors)
             if conn:
                 conn.rollback()
             logger.warning(f"Transaction data integrity violation: {str(e)}")
             raise ValueError(f"Invalid transaction data: {str(e)}")
         except sqlite3.OperationalError as e:
+            # Catch OperationalError for database file permission issues
             if conn:
                 conn.rollback()
             logger.error(f"Database operation failed for transaction: {str(e)}")

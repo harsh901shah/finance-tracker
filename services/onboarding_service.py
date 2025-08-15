@@ -14,7 +14,14 @@ class OnboardingService:
     
     @classmethod
     def get_user_progress(cls, user_id: str) -> Dict[str, Any]:
-        """Get user's onboarding progress"""
+        """Get user's onboarding progress from database.
+        
+        Args:
+            user_id: The user identifier
+            
+        Returns:
+            Dict containing progress data with completed steps and current status
+        """
         progress = DatabaseService.get_user_preference('onboarding_progress', user_id, {
             'completed_steps': [],
             'current_step': 'welcome',
@@ -31,7 +38,14 @@ class OnboardingService:
     
     @classmethod
     def should_show_onboarding(cls, user_id: str) -> bool:
-        """Check if onboarding should be shown to user"""
+        """Check if onboarding should be shown to user based on progress and activity.
+        
+        Args:
+            user_id: The user identifier
+            
+        Returns:
+            bool: True if onboarding should be displayed
+        """
         progress = cls.get_user_progress(user_id)
         
         # Don't show if user has skipped or completed onboarding
@@ -44,12 +58,18 @@ class OnboardingService:
             transactions = TransactionService.load_transactions(user_id)
             return len(transactions) < 3  # Show onboarding if user has fewer than 3 transactions
         except Exception as e:
+            # If transaction count cannot be determined, default to showing onboarding to avoid missing new user setup
             logger.warning(f"Could not check transaction count for onboarding: {str(e)}")
             return True  # Show onboarding if we can't determine transaction count
     
     @classmethod
     def show_onboarding_flow(cls, user_id: str, current_page: str = None):
-        """Show appropriate onboarding step based on current page and progress"""
+        """Show appropriate onboarding step based on current page and progress.
+        
+        Args:
+            user_id: The user identifier
+            current_page: Current page name for contextual onboarding
+        """
         progress = cls.get_user_progress(user_id)
         
         if not cls.should_show_onboarding(user_id):

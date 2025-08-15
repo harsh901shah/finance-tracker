@@ -3,6 +3,9 @@ Main entry point for the Finance Tracker application.
 
 This module initializes and runs the Finance Tracker application, handling
 authentication, page navigation, and overall application flow.
+
+NOTE: All Streamlit session keys for Finance Tracker are now prefixed with 'ft_' 
+for clarity and isolation (e.g., ft_user, ft_authenticated, ft_current_page).
 """
 
 import streamlit as st
@@ -211,7 +214,7 @@ class FinanceApp:
                         if "ft_user" in st.session_state and st.session_state.ft_user and "session_token" in st.session_state.ft_user:
                             AuthService.logout(st.session_state.ft_user["session_token"])
                         
-                        # Clear all app data except safe UI preferences
+                        # Clear all application data except safe UI preferences (theme, language, ui_preferences) on logout
                         safe_keys = {'theme', 'language', 'ui_preferences'}
                         keys_to_remove = [key for key in st.session_state.keys() 
                                         if not key.startswith('st.') and key not in safe_keys]
@@ -318,7 +321,7 @@ class FinanceApp:
                     st.error(error_msg)
                     st.info("💡 **Recovery Options:**\n- Refresh the page\n- Try a different section\n- Restart the application")
                     
-                    # Show technical details in debug mode only
+                    # Only show detailed error/debug info in debug mode to avoid confusing end users
                     if st.session_state.get('ft_debug_mode', False):
                         with st.expander("🔧 Debug Information"):
                             st.code(f"Error: {str(e)}")
@@ -335,6 +338,7 @@ class FinanceApp:
             st.code(f"Error Type: {type(e).__name__}")
             st.code(f"Error Message: {str(e)}")
             
+            # Only show detailed error/debug info in debug mode to avoid confusing end users
             if st.session_state.get('ft_debug_mode', False):
                 with st.expander("🔧 Full Debug Information"):
                     st.code(f"Full Traceback:\n{traceback.format_exc()}")

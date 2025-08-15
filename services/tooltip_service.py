@@ -122,18 +122,34 @@ class TooltipService:
     
     @classmethod
     def show_tooltip(cls, key: str, icon: str = "ℹ️"):
-        """Display tooltip for a given key"""
+        """Display tooltip for a given key with optional icon.
+        
+        Args:
+            key: The tooltip key to look up
+            icon: Icon to display with the tooltip
+        """
         if key in cls.TOOLTIPS:
             st.info(f"{icon} {cls.TOOLTIPS[key]}")
     
     @classmethod
     def get_tooltip_text(cls, key: str) -> str:
-        """Get tooltip text for a key"""
+        """Get tooltip text for a specific key.
+        
+        Args:
+            key: The tooltip key to retrieve
+            
+        Returns:
+            str: The tooltip text or default message if not found
+        """
         return cls.TOOLTIPS.get(key, "No help available for this item")
     
     @classmethod
     def show_contextual_help(cls, context: str):
-        """Show contextual help based on current page/context"""
+        """Show contextual help based on current page/context.
+        
+        Args:
+            context: The current page or context identifier
+        """
         if context == 'add_transaction':
             with st.expander("💡 Transaction Help", expanded=False):
                 st.markdown("""
@@ -200,7 +216,11 @@ class TooltipService:
     
     @classmethod
     def get_feature_announcement(cls) -> str:
-        """Get latest feature announcements"""
+        """Get latest feature announcements for display to users.
+        
+        Returns:
+            str: Formatted announcement text with new features
+        """
         return """
         🎉 **New Features Available!**
         - **Bulk Actions**: Select and delete multiple transactions
