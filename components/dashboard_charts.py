@@ -261,20 +261,20 @@ class DashboardCharts:
             )
         else:
             for i, row in data.iterrows():
-            # Use configurable budget colors based on percentage
-            if row['Percentage'] <= 90:
-                color = AppConfig.BUDGET_COLORS['under_budget']
-            elif row['Percentage'] <= 100:
-                color = AppConfig.BUDGET_COLORS['at_budget']
-            else:
-                color = AppConfig.BUDGET_COLORS['over_budget']
-            
-            fig.add_trace(go.Bar(
-                x=[row['Percentage']], y=[row['Category']], orientation='h',
-                name=row['Category'], showlegend=False, marker_color=color,
-                text=f"${row['Spent']} of ${row['Budget']} ({row['Percentage']:.1f}%)",
-                textposition='auto'
-            ))
+                # Use configurable budget colors based on percentage
+                if row['Percentage'] <= 90:
+                    color = AppConfig.BUDGET_COLORS['under_budget']
+                elif row['Percentage'] <= 100:
+                    color = AppConfig.BUDGET_COLORS['at_budget']
+                else:
+                    color = AppConfig.BUDGET_COLORS['over_budget']
+                
+                fig.add_trace(go.Bar(
+                    x=[row['Percentage']], y=[row['Category']], orientation='h',
+                    name=row['Category'], showlegend=False, marker_color=color,
+                    text=f"${row['Spent']} of ${row['Budget']} ({row['Percentage']:.1f}%)",
+                    textposition='auto'
+                ))
         
         fig.update_layout(
             margin=dict(l=20, r=20, t=20, b=20), plot_bgcolor='rgba(0,0,0,0)',

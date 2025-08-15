@@ -131,13 +131,10 @@ class DatabaseService:
             )
             ''')
             
-            # Create indexes for performance optimization
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_date ON transactions(user_id, date DESC)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_type ON transactions(user_id, type)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_user_category ON transactions(user_id, category)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_assets_user ON assets(user_id)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_liabilities_user ON liabilities(user_id)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_real_estate_user ON real_estate(user_id)')
+            # Create indexes for performance optimization (user_id columns added dynamically)
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date DESC)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category)')
             
             # Create audit log table for sensitive actions
             cursor.execute('''
