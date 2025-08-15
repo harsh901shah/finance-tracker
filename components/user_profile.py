@@ -45,7 +45,7 @@ class UserProfile:
             
         with st.expander("👤 Profile Settings"):
             # Display name customization
-            current_name = st.session_state.get('user', {}).get('full_name', 'User')
+            current_name = st.session_state.get('ft_user', {}).get('full_name', 'User')
             display_name = st.text_input(
                 "Display Name", 
                 value=current_name,
@@ -78,8 +78,8 @@ class UserProfile:
                     DatabaseService.save_user_preference('user_profile', profile_data, str(user_id))
                     
                     # Update session state
-                    if 'user' in st.session_state and st.session_state.user:
-                        st.session_state.user['full_name'] = display_name
+                    if 'ft_user' in st.session_state and st.session_state.ft_user:
+                        st.session_state.ft_user['full_name'] = display_name
                     
                     st.success("✅ Profile settings saved!")
                     st.rerun()
@@ -110,8 +110,8 @@ class UserProfile:
                 return display_name
                 
             # Fallback to session data
-            if 'user' in st.session_state and st.session_state.user:
-                return st.session_state.user.get('full_name', 'User')
+            if 'ft_user' in st.session_state and st.session_state.ft_user:
+                return st.session_state.ft_user.get('full_name', 'User')
                 
             return "User"
             

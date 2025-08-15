@@ -296,7 +296,8 @@ class DatabaseService:
             conn.commit()
         
         if user_id:
-            cursor.execute('SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC', (user_id,))
+            # Handle both string and integer user_id
+            cursor.execute('SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC', (str(user_id),))
         else:
             # Don't return any transactions if no user_id provided
             return []
@@ -312,16 +313,31 @@ class DatabaseService:
         conn = cls.get_connection()
         cursor = conn.cursor()
         
+        # Debug logging
+        logger.info(f"Attempting to delete transaction {transaction_id} for user_id: {user_id} (type: {type(user_id)})")
+        
         # Get transaction data before deletion for audit log
-        cursor.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, user_id))
+        cursor.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, str(user_id)))
         transaction_data = cursor.fetchone()
+        
+        # Debug: Check if transaction was found
+        if not transaction_data:
+            logger.warning(f"Transaction {transaction_id} not found for user {user_id}")
+            # Try to find the transaction without user filter to see if it exists
+            cursor.execute('SELECT * FROM transactions WHERE id = ?', (transaction_id,))
+            any_transaction = cursor.fetchone()
+            if any_transaction:
+                logger.warning(f"Transaction {transaction_id} exists but belongs to user_id: {any_transaction['user_id']} (type: {type(any_transaction['user_id'])})")
+            else:
+                logger.warning(f"Transaction {transaction_id} does not exist at all")
         
         if transaction_data:
             # Log the deletion
             cls._log_audit_action(user_id, 'DELETE', 'transactions', transaction_id, dict(transaction_data), None)
             
-            cursor.execute('DELETE FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, user_id))
+            cursor.execute('DELETE FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, str(user_id)))
             deleted = cursor.rowcount > 0
+            logger.info(f"Delete operation result: {deleted}")
         else:
             deleted = False
         
@@ -340,14 +356,14 @@ class DatabaseService:
         try:
             for transaction_id in transaction_ids:
                 # Get transaction data before deletion
-                cursor.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, user_id))
+                cursor.execute('SELECT * FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, str(user_id)))
                 transaction_data = cursor.fetchone()
                 
                 if transaction_data:
                     # Log the deletion
                     cls._log_audit_action(user_id, 'DELETE', 'transactions', transaction_id, dict(transaction_data), None)
                     
-                    cursor.execute('DELETE FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, user_id))
+                    cursor.execute('DELETE FROM transactions WHERE id = ? AND user_id = ?', (transaction_id, str(user_id)))
                     if cursor.rowcount > 0:
                         deleted_count += 1
             

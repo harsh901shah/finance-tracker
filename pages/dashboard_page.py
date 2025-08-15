@@ -43,133 +43,9 @@ class DashboardPage:
             analytics = cls._get_additional_analytics() if AppConfig.FEATURES.get('advanced_analytics', True) else {}
         
         # World-class KPI grid
-        cls._render_kpi_grid(current_month_data, trends, analytics)
+        from components.dashboard_filters import render_kpi_grid
         
-        # Cash flow chart
-        st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
-        st.markdown("<h2>Cash Flow</h2>", unsafe_allow_html=True)
-        
-        # Get real cash flow data
-        cash_flow_data = cls._get_real_cash_flow_data()
-        
-        # Create cash flow chart
-        fig = cls._create_cash_flow_chart(cash_flow_data)
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Add equal height CSS for cards
-        st.markdown("""
-        <style>
-        .k-equal { display: flex; flex-direction: column; height: 100%; }
-        .k-equal .chart-container { flex: 1; display: flex; flex-direction: column; }
-        @media (max-width: 900px) {
-            div[data-testid="stHorizontalBlock"] > div { margin-bottom: 12px; }
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # Bottom section with two columns
-        col1, col2 = st.columns(2)
-        
-        # Spending by category
-        with col1:
-            st.markdown('<div class="k-equal">', unsafe_allow_html=True)
-            st.markdown("""
-            <div class='chart-container'>
-                <div style='display: flex; align-items: center; margin-bottom: 12px;'>
-                    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 12px;'>
-                        <span style='font-size: 1.2rem;'>📊</span>
-                    </div>
-                    <div>
-                        <h2 style='margin: 0; font-size: 1.2rem; font-weight: 600; color: #1e293b;'>Spending by Category</h2>
-                        <p style='margin: 0; color: #64748b; font-size: 0.8rem;'>Current month breakdown</p>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # Get real spending by category data
-            category_data = cls._get_real_category_data()
-            
-            if not category_data.empty:
-                # Create spending by category chart
-                fig = cls._create_category_chart(category_data)
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            else:
-                st.markdown("""
-                <div style='text-align: center; padding: 2rem; background: #f8fafc; border-radius: 12px; border: 2px dashed #e2e8f0; height: 360px; display: flex; flex-direction: column; justify-content: center;'>
-                    <h3 style='color: #64748b; margin-bottom: 1rem;'>📊 No Spending Data</h3>
-                    <p style='color: #64748b; margin: 0;'>Add expense transactions to see breakdown</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown("</div></div>", unsafe_allow_html=True)
-        
-        # Budget progress
-        with col2:
-            st.markdown('<div class="k-equal">', unsafe_allow_html=True)
-            if AppConfig.FEATURES.get('budget_tracking', True):
-                st.markdown("""
-                <div class='chart-container'>
-                    <div style='display: flex; align-items: center; margin-bottom: 12px;'>
-                        <div style='background: linear-gradient(135deg, #10b981 0%, #059669 100%); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 12px;'>
-                            <span style='font-size: 1.2rem;'>🎯</span>
-                        </div>
-                        <div>
-                            <h2 style='margin: 0; font-size: 1.2rem; font-weight: 600; color: #1e293b;'>Budget Progress</h2>
-                            <p style='margin: 0; color: #64748b; font-size: 0.8rem;'>Monthly budget tracking</p>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                # Get real budget progress data
-                budget_data = cls._get_real_budget_data()
-                
-                if not budget_data.empty:
-                    # Create budget progress chart
-                    fig = cls._create_budget_chart(budget_data)
-                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-                else:
-                    st.markdown("""
-                    <div style='text-align: center; padding: 2rem; background: #f8fafc; border-radius: 12px; border: 2px dashed #e2e8f0; height: 360px; display: flex; flex-direction: column; justify-content: center;'>
-                        <h3 style='color: #64748b; margin-bottom: 1rem;'>🎯 No Budget Set</h3>
-                        <p style='color: #64748b; margin: 0;'>Go to Budget Planning to set limits</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                st.markdown("</div>", unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div class='chart-container'>
-                    <div style='height: 360px; display: flex; align-items: center; justify-content: center;'>
-                        <div>📊 Budget tracking is currently disabled</div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Recent transactions
-        st.markdown("<div class='transactions-container'>", unsafe_allow_html=True)
-        st.markdown("<h2>Recent Transactions</h2>", unsafe_allow_html=True)
-        
-        # Get real recent transactions data
-        transactions_data = cls._get_real_recent_transactions()
-        
-        # Display transactions table
-        cls._display_transactions_table(transactions_data)
-        st.markdown("</div>", unsafe_allow_html=True)
-    
-    @staticmethod
-    def _render_compact_filter_bar():
-        """Render compact single-row filter bar"""
-        # Get filter controls once to avoid duplicate IDs
-        date_filter, filters, apply_filter = DashboardFilters.render_filter_controls()
-        return date_filter, filters, apply_filter
-    
-    @classmethod
-    def _render_kpi_grid(cls, current_month_data, trends, analytics):
-        """Render responsive KPI grid with world-class design"""
-        
-        # Calculate all KPI values (keeping original logic)
+        # Calculate all KPI values
         net_income = current_month_data['income'] - current_month_data['expenses']
         savings_rate = (net_income / current_month_data['income'] * 100) if current_month_data['income'] > 0 else 0
         
@@ -209,72 +85,78 @@ class DashboardPage:
                 'value': f"{savings_rate:.1f}%",
                 'delta': savings_trend if has_trend_data else None,
                 'delta_type': 'positive' if savings_trend >= 0 else 'negative' if has_trend_data else 'neutral'
-            },
-            {
-                'icon': '🔄',
-                'title': 'Transfers',
-                'value': f"${analytics.get('transfers', 0):,.0f}",
-                'delta': None,
-                'delta_type': 'neutral'
-            },
-            {
-                'icon': '🏆',
-                'title': 'Top Category',
-                'value': analytics.get('top_category', 'N/A'),
-                'delta': None,
-                'delta_type': 'neutral'
-            },
-            {
-                'icon': '📊',
-                'title': 'Avg Transaction',
-                'value': f"${analytics.get('avg_transaction', 0):,.0f}",
-                'delta': None,
-                'delta_type': 'neutral'
-            },
-            {
-                'icon': '💳',
-                'title': 'Payment Method',
-                'value': analytics.get('top_payment_method', 'N/A'),
-                'delta': None,
-                'delta_type': 'neutral'
             }
         ]
         
-        # Render KPI cards in responsive grid
-        for i in range(0, len(kpis), 4):
-            cols = st.columns(4)
-            for j, col in enumerate(cols):
-                if i + j < len(kpis):
-                    with col:
-                        cls._render_kpi_card(kpis[i + j])
+        render_kpi_grid(kpis)
+        
+        # Cash flow chart
+        st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+        st.markdown("<h2>Cash Flow</h2>", unsafe_allow_html=True)
+        
+        # Get real cash flow data
+        cash_flow_data = cls._get_real_cash_flow_data()
+        
+        # Create cash flow chart
+        fig = cls._create_cash_flow_chart(cash_flow_data)
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Two-column section with robust data handling
+        col1, col2 = st.columns(2)
+        
+        # Get and normalize transaction data
+        tx_data = cls._get_normalized_transactions(transactions)
+        
+        with col1:
+            st.markdown("### Spending by Category")
+            st.caption("Current month breakdown")
+            
+            if tx_data['total_spent'] <= 0:
+                st.info("No spending in the selected month.")
+            else:
+                # Show total
+                st.metric("Total Spent", f"${tx_data['total_spent']:,.0f}")
+                
+                # Show top categories
+                for cat, amt in tx_data['top_categories']:
+                    pct = amt/tx_data['total_spent']*100
+                    st.write(f"**{cat}**: ${amt:,.0f} ({pct:.1f}%)")
+        
+        with col2:
+            st.markdown("### Budget Progress")
+            st.caption("Monthly budget tracking")
+            
+            budget_data = cls._get_budget_progress(tx_data['spending_by_category'])
+            
+            if not budget_data:
+                st.info("No budgets set or no spending this month.")
+            else:
+                for item in budget_data:
+                    color = "🟢" if item['pct'] <= 100 else "🔴"
+                    st.write(f"{color} **{item['category']}**: ${item['spent']:,.0f} / ${item['budget']:,.0f} ({item['pct']:.1f}%)")
+                    st.progress(min(item['pct']/100, 1.0))
+
+        
+        # Recent transactions
+        st.markdown("<div class='transactions-container'>", unsafe_allow_html=True)
+        st.markdown("<h2>Recent Transactions</h2>", unsafe_allow_html=True)
+        
+        # Get real recent transactions data
+        transactions_data = cls._get_real_recent_transactions()
+        
+        # Display transactions table
+        cls._display_transactions_table(transactions_data)
+        st.markdown("</div>", unsafe_allow_html=True)
     
     @staticmethod
-    def _render_kpi_card(kpi):
-        """Render individual KPI card with world-class design"""
-        delta_html = ""
-        if kpi['delta'] is not None:
-            delta_color = {
-                'positive': '#00D924',
-                'negative': '#FF3B30', 
-                'neutral': '#8E8E93'
-            }[kpi['delta_type']]
-            
-            delta_icon = '↗' if kpi['delta_type'] == 'positive' else '↘' if kpi['delta_type'] == 'negative' else '→'
-            delta_html = f'<div class="kpi-delta" style="background-color: {delta_color}15; color: {delta_color};">{delta_icon} {abs(kpi["delta"]):.1f}%</div>'
-        
-        caption_text = "vs last period" if kpi['delta'] is not None else ""
-        
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-header">
-                <div class="kpi-icon">{kpi['icon']}</div>
-                <div class="kpi-title">{kpi['title']}</div>
-            </div>
-            <div class="kpi-value">{kpi['value']}</div>
-            {delta_html}
-            <div class="kpi-caption">{caption_text}</div>
-        </div>
-        """, unsafe_allow_html=True)
+    def _render_compact_filter_bar():
+        """Render compact single-row filter bar"""
+        # Get filter controls once to avoid duplicate IDs
+        date_filter, filters, apply_filter = DashboardFilters.render_filter_controls()
+        return date_filter, filters, apply_filter
+    
+
     
     @staticmethod
     def _get_transactions_data():
@@ -553,6 +435,289 @@ class DashboardPage:
         return fig
     
     @staticmethod
+    def _get_normalized_transactions(transactions):
+        """Get normalized transaction data with robust filtering"""
+        current_month = datetime.now().strftime('%Y-%m')
+        
+        # Normalize and filter transactions
+        spending_by_category = {}
+        total_spent = 0
+        
+        for tx in transactions:
+            # Normalize fields
+            tx_date = str(tx.get('date', '')).strip()
+            tx_type = str(tx.get('type', '')).lower().strip()
+            tx_category = str(tx.get('category', 'Other')).strip()
+            
+            try:
+                tx_amount = abs(float(tx.get('amount', 0)))
+            except (ValueError, TypeError):
+                tx_amount = 0
+            
+            # Filter for current month expenses
+            if tx_date.startswith(current_month) and tx_type == 'expense' and tx_amount > 0:
+                spending_by_category[tx_category] = spending_by_category.get(tx_category, 0) + tx_amount
+                total_spent += tx_amount
+        
+        # Get top categories
+        top_categories = sorted(spending_by_category.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        return {
+            'spending_by_category': spending_by_category,
+            'total_spent': total_spent,
+            'top_categories': top_categories
+        }
+    
+    @staticmethod
+    def _get_budget_progress(spending_by_category):
+        """Get budget progress data with spending matched to budgets"""
+        try:
+            from services.financial_data_service import BudgetService
+            budgets = BudgetService.load_budget()
+            
+            if not budgets:
+                return []
+            
+            budget_progress = []
+            
+            # Check each budget category
+            for category, budget_amount in budgets.items():
+                category = str(category).strip()
+                try:
+                    budget_amount = float(budget_amount)
+                except (ValueError, TypeError):
+                    budget_amount = 0
+                
+                if budget_amount <= 0:
+                    continue
+                
+                # Find matching spending (normalize category names)
+                spent = 0
+                for spend_cat, spend_amt in spending_by_category.items():
+                    if str(spend_cat).strip().lower() == category.lower():
+                        spent = spend_amt
+                        break
+                
+                pct = (spent / budget_amount * 100) if budget_amount > 0 else 0
+                
+                budget_progress.append({
+                    'category': category,
+                    'spent': spent,
+                    'budget': budget_amount,
+                    'pct': pct
+                })
+            
+            # Sort by percentage used
+            budget_progress.sort(key=lambda x: x['pct'], reverse=True)
+            return budget_progress
+            
+        except Exception as e:
+            print(f"Budget progress error: {e}")
+            return []
+    
+    @staticmethod
+    def _get_spending_data(transactions):
+        """Get spending data for current month"""
+        current_month = datetime.now().strftime('%Y-%m')
+        expense_transactions = [t for t in transactions if 
+                              t.get('date', '').startswith(current_month) and 
+                              t.get('type', '').lower() == 'expense']
+        
+        if not expense_transactions:
+            return None
+            
+        category_spending = {}
+        total_spent = 0
+        for transaction in expense_transactions:
+            category = transaction.get('category', 'Other')
+            amount = abs(float(transaction.get('amount', 0)))
+            category_spending[category] = category_spending.get(category, 0) + amount
+            total_spent += amount
+        
+        return {
+            'category_spending': category_spending,
+            'total_spent': total_spent,
+            'transaction_count': len(expense_transactions)
+        }
+    
+    @staticmethod
+    def _render_spending_content(spending_data):
+        """Render spending content as HTML"""
+        if not spending_data:
+            return '''
+            <div style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: 8px; border: 2px dashed #e5e7eb;">
+                <div style="font-size: 2rem; margin-bottom: 16px;">📊</div>
+                <h4 style="color: #64748b; margin-bottom: 8px;">No Spending Data</h4>
+                <p style="color: #64748b; margin: 0;">Start tracking expenses to see breakdown</p>
+            </div>
+            '''
+        
+        category_spending = spending_data['category_spending']
+        total_spent = spending_data['total_spent']
+        
+        # Create simple category list
+        top_5 = sorted(category_spending.items(), key=lambda x: x[1], reverse=True)[:5]
+        category_html = ''
+        for cat, amt in top_5:
+            pct = amt/total_spent*100
+            category_html += f'''
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+                <span style="font-weight: 500;">{cat}</span>
+                <span style="color: #64748b;">${amt:,.0f} ({pct:.1f}%)</span>
+            </div>
+            '''
+        
+        return f'''
+        <div style="margin-bottom: 16px;">
+            <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${total_spent:,.0f}</div>
+            <div style="color: #64748b;">Total spent this month</div>
+        </div>
+        <div>{category_html}</div>
+        '''
+    
+    @staticmethod
+    def _render_budget_content(budget_data):
+        """Render budget content as HTML"""
+        if budget_data.empty:
+            return '''
+            <div style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: 8px; border: 2px dashed #e5e7eb;">
+                <div style="font-size: 2rem; margin-bottom: 16px;">🎯</div>
+                <h4 style="color: #64748b; margin-bottom: 8px;">No Budget Set</h4>
+                <p style="color: #64748b; margin: 0;">Go to Budget Planning to set limits</p>
+            </div>
+            '''
+        
+        # Filter active categories
+        active_data = budget_data[(budget_data['Budget'] > 0) | (budget_data['Spent'] > 0)]
+        
+        if active_data.empty:
+            return '''
+            <div style="text-align: center; padding: 2rem;">
+                <p style="color: #64748b;">No budget categories with activity</p>
+            </div>
+            '''
+        
+        budget_html = ''
+        for _, row in active_data.iterrows():
+            pct = row['Percentage']
+            color = '#16a34a' if pct <= 100 else '#ef4444'
+            budget_html += f'''
+            <div style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="font-weight: 500;">{row['Category']}</span>
+                    <span style="color: #64748b;">${row['Spent']:,.0f} / ${row['Budget']:,.0f}</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden;">
+                    <div style="width: {min(pct, 100)}%; height: 100%; background: {color};"></div>
+                </div>
+            </div>
+            '''
+        
+        return budget_html
+    
+    @staticmethod
+    def _render_spending_section_old(transactions, active_period_label):
+        """Render spending by category section with professional empty state"""
+        # Filter for expenses in current period
+        current_month = datetime.now().strftime('%Y-%m')
+        expense_transactions = [t for t in transactions if 
+                              t.get('date', '').startswith(current_month) and 
+                              t.get('type', '').lower() == 'expense']
+        
+        if not expense_transactions:
+            # Empty state with proper Streamlit components
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); 
+                        border: 2px dashed #e5e7eb; border-radius: 14px; padding: 32px; 
+                        text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size: 3rem; margin-bottom: 16px;">📊</div>
+                <h3 style="color: #0f172a; font-weight: 600; margin-bottom: 8px;">No Spending Data</h3>
+                <p style="color: #64748b; margin-bottom: 24px;">Start tracking your expenses to see category breakdown</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Buttons using Streamlit components
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                btn_col1, btn_col2 = st.columns(2)
+                with btn_col1:
+                    st.button("Add Expense", type="primary", use_container_width=True)
+                with btn_col2:
+                    st.button("Import CSV", use_container_width=True)
+            
+            # Tips as markdown
+            st.markdown("""
+            <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px;">
+                <span style="background: #f1f5f9; color: #64748b; padding: 6px 12px; border-radius: 20px; font-size: 0.875rem;">Try: Groceries</span>
+                <span style="background: #f1f5f9; color: #64748b; padding: 6px 12px; border-radius: 20px; font-size: 0.875rem;">Rent</span>
+                <span style="background: #f1f5f9; color: #64748b; padding: 6px 12px; border-radius: 20px; font-size: 0.875rem;">Utilities</span>
+                <span style="background: #f1f5f9; color: #64748b; padding: 6px 12px; border-radius: 20px; font-size: 0.875rem;">Transportation</span>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Data state with KPIs and charts
+            category_spending = {}
+            total_spent = 0
+            for transaction in expense_transactions:
+                category = transaction.get('category', 'Other')
+                amount = abs(float(transaction.get('amount', 0)))
+                category_spending[category] = category_spending.get(category, 0) + amount
+                total_spent += amount
+            
+            top_category = max(category_spending.items(), key=lambda x: x[1])[0] if category_spending else 'N/A'
+            
+            # KPI header
+            st.markdown(f"""
+            <div style="display: flex; gap: 24px; margin-bottom: 16px; padding: 16px; 
+                        background: #f8fafc; border-radius: 8px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">${total_spent:,.0f}</div>
+                    <div style="font-size: 0.875rem; color: #64748b;">Total Spent</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #0f172a;">{len(expense_transactions)}</div>
+                    <div style="font-size: 0.875rem; color: #64748b;">Transactions</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: 600; color: #0f172a;">{top_category}</div>
+                    <div style="font-size: 0.875rem; color: #64748b;">Top Category</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Show donut chart
+            df = pd.DataFrame(list(category_spending.items()), columns=['Category', 'Amount'])
+            fig = go.Figure(data=[go.Pie(
+                labels=df['Category'], values=df['Amount'], hole=.5,
+                marker_colors=['#4f46e5', '#16a34a', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+            )])
+            fig.update_layout(height=250, margin=dict(l=0,r=0,t=0,b=0), showlegend=False)
+            fig.add_annotation(text=f"${total_spent:,.0f}", x=0.5, y=0.5, font_size=20, showarrow=False)
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            
+            # Only show top categories bar if more than one category
+            if len(category_spending) > 1:
+                st.markdown("**Top Categories**")
+                top_5 = sorted(category_spending.items(), key=lambda x: x[1], reverse=True)[:5]
+                
+                fig = go.Figure()
+                for i, (cat, amt) in enumerate(top_5):
+                    pct = amt/total_spent*100
+                    fig.add_trace(go.Bar(
+                        y=[cat], x=[pct], orientation='h',
+                        marker_color=['#4f46e5', '#16a34a', '#f59e0b', '#ef4444', '#8b5cf6'][i],
+                        text=f'${amt:,.0f}', textposition='auto', showlegend=False
+                    ))
+                
+                fig.update_layout(
+                    height=max(120, len(top_5) * 30),
+                    margin=dict(l=0,r=0,t=0,b=0),
+                    xaxis=dict(showgrid=False, showticklabels=False),
+                    yaxis=dict(showgrid=False)
+                )
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    
+    @staticmethod
     def _get_real_category_data():
         """Get real spending by category data"""
         try:
@@ -665,43 +830,36 @@ class DashboardPage:
     @staticmethod
     def _create_budget_chart(data):
         """Create a budget progress chart using Plotly"""
+        # Filter to only categories with budget or spending
+        active_data = data[(data['Budget'] > 0) | (data['Spent'] > 0)]
+        
+        if active_data.empty:
+            return None
+            
         fig = go.Figure()
         
-        for i, row in data.iterrows():
-            color = '#4CAF50' if row['Percentage'] <= 100 else '#F44336'
+        for i, row in active_data.iterrows():
+            color = '#16a34a' if row['Percentage'] <= 100 else '#ef4444'
             
             fig.add_trace(go.Bar(
                 x=[row['Percentage']],
                 y=[row['Category']],
                 orientation='h',
-                name=row['Category'],
                 showlegend=False,
                 marker_color=color,
-                text=f"${row['Spent']} of ${row['Budget']} ({row['Percentage']:.1f}%)",
+                text=f"${row['Spent']:,.0f} / ${row['Budget']:,.0f}",
                 textposition='auto'
             ))
         
         fig.update_layout(
-            height=360,
-            margin=dict(l=10, r=10, t=10, b=10),
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(
-                family="Inter, sans-serif",
-                size=12,
-                color="#333333"
-            ),
+            height=max(120, len(active_data) * 40),
+            margin=dict(l=0,r=0,t=0,b=0),
             xaxis=dict(
-                range=[0, 120],
-                showgrid=True,
-                gridcolor='#E0E0E0',
-                zeroline=False,
-                ticksuffix='%'
-            ),
-            yaxis=dict(
                 showgrid=False,
-                zeroline=False
-            )
+                showticklabels=len(active_data) > 1,
+                ticksuffix='%' if len(active_data) > 1 else ''
+            ),
+            yaxis=dict(showgrid=False)
         )
         
         return fig
