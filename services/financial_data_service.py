@@ -12,24 +12,31 @@ class TransactionService:
     """Service for handling transaction data"""
     
     @staticmethod
+    def _get_user_id(user_id: str = None) -> str:
+        """Helper method to get user ID from auth middleware"""
+        if user_id:
+            return user_id
+            
+        from utils.auth_middleware import AuthMiddleware
+        current_user = AuthMiddleware.get_current_user_id()
+        
+        if isinstance(current_user, dict) and 'user_id' in current_user:
+            return str(current_user['user_id'])
+        elif current_user:
+            return str(current_user)
+        else:
+            return 'default_user'
+    
+    @staticmethod
     def add_transaction(transaction: Dict[str, Any], user_id: str = None) -> int:
         """Add a transaction to the database"""
-        from utils.auth_middleware import AuthMiddleware
-        
-        if not user_id:
-            current_user = AuthMiddleware.get_current_user_id()
-            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
-        
+        user_id = TransactionService._get_user_id(user_id)
         return DatabaseService.add_transaction(transaction, user_id)
     
     @staticmethod
     def load_transactions(user_id: str = None, use_cache: bool = True) -> List[Dict[str, Any]]:
         """Load all transactions from the database for a specific user with caching"""
-        from utils.auth_middleware import AuthMiddleware
-        
-        if not user_id:
-            current_user = AuthMiddleware.get_current_user_id()
-            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+        user_id = TransactionService._get_user_id(user_id)
         
         # Use cached version if available and recent
         if use_cache:
@@ -92,11 +99,8 @@ class TransactionService:
             user_id: The user identifier (optional, will get from auth if not provided)
         """
         import streamlit as st
-        from utils.auth_middleware import AuthMiddleware
         
-        if not user_id:
-            current_user = AuthMiddleware.get_current_user_id()
-            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+        user_id = TransactionService._get_user_id(user_id)
         
         cache_key = f"transactions_cache_{user_id}"
         cache_time_key = f"transactions_cache_time_{user_id}"
@@ -139,11 +143,7 @@ class TransactionService:
     @staticmethod
     def get_statement_metadata(user_id: str = None) -> Optional[Dict[str, Any]]:
         """Get the latest statement metadata from transactions"""
-        from utils.auth_middleware import AuthMiddleware
-        
-        if not user_id:
-            current_user = AuthMiddleware.get_current_user_id()
-            user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+        user_id = TransactionService._get_user_id(user_id)
         
         transactions = DatabaseService.get_transactions(user_id)
         
@@ -222,15 +222,27 @@ class NetWorthService:
     
     NETWORTH_FILE = 'networth.json'
     
+    @staticmethod
+    def _get_user_id(user_id: str = None) -> str:
+        """Helper method to get user ID from auth middleware"""
+        if user_id:
+            return user_id
+            
+        from utils.auth_middleware import AuthMiddleware
+        current_user = AuthMiddleware.get_current_user_id()
+        
+        if isinstance(current_user, dict) and 'user_id' in current_user:
+            return str(current_user['user_id'])
+        elif current_user:
+            return str(current_user)
+        else:
+            return 'default_user'
+    
     @classmethod
     def save_networth(cls, networth_data: Dict[str, Any], user_id: str = None) -> bool:
         """Save net worth data to database with user isolation"""
         try:
-            from utils.auth_middleware import AuthMiddleware
-            
-            if not user_id:
-                current_user = AuthMiddleware.get_current_user_id()
-                user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+            user_id = cls._get_user_id(user_id)
             
             # Save investments
             investments = networth_data.get('investments', {})
@@ -263,11 +275,7 @@ class NetWorthService:
     def load_networth(cls, user_id: str = None) -> Dict[str, Any]:
         """Load net worth data from database for a specific user"""
         try:
-            from utils.auth_middleware import AuthMiddleware
-            
-            if not user_id:
-                current_user = AuthMiddleware.get_current_user_id()
-                user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
+            user_id = cls._get_user_id(user_id)
             
             networth_data = {
                 'investments': {

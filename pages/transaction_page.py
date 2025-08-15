@@ -58,7 +58,11 @@ class TransactionPage:
         TooltipService.show_contextual_help('view_transactions')
         
         # Show undo options if available
-        user_id = AuthMiddleware.get_current_user_id().get('user_id')
+        current_user = AuthMiddleware.get_current_user_id()
+        if isinstance(current_user, dict) and 'user_id' in current_user:
+            user_id = current_user['user_id']
+        else:
+            user_id = current_user
         undo_snapshots = DatabaseService.get_undo_snapshots(user_id)
         if undo_snapshots:
             with st.expander("↩️ Undo Recent Actions", expanded=False):
@@ -75,11 +79,37 @@ class TransactionPage:
                                 st.error("Failed to undo action")
         
         # Load transactions
+        # Clear cache to force fresh load
+        TransactionService.clear_cache()
         transactions = TransactionService.load_transactions()
+        
+        # Debug: Show current user info (temporarily enabled)
+        current_user = AuthMiddleware.get_current_user_id()
+        st.write(f"Debug - Current user: {current_user}")
+        st.write(f"Debug - Loaded {len(transactions)} transactions")
+        if isinstance(current_user, dict) and 'user_id' in current_user:
+            st.write(f"Debug - User ID from dict: {current_user['user_id']} (type: {type(current_user['user_id'])})")
+        else:
+            st.write(f"Debug - User ID direct: {current_user} (type: {type(current_user)})")
         
         if not transactions:
             st.info("No transactions found. Add some transactions to see them here.")
             st.info("💡 Click 'Add Transaction' in the sidebar to get started!")
+            
+            # Debug info for troubleshooting (temporarily enabled)
+            current_user = AuthMiddleware.get_current_user_id()
+            st.write(f"Debug - Current user for transactions: {current_user}")
+            # Check if there are any transactions in the database at all
+            all_transactions = DatabaseService.get_transactions(None)
+            st.write(f"Debug - Total transactions in database: {len(all_transactions) if all_transactions else 0}")
+            # Check what user_ids exist in the database
+            import sqlite3
+            conn = sqlite3.connect('finance_tracker.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT DISTINCT user_id FROM transactions')
+            db_user_ids = cursor.fetchall()
+            conn.close()
+            st.write(f"Debug - User IDs in database: {db_user_ids}")
             return
         
         # Convert transactions to DataFrame
@@ -240,7 +270,7 @@ class TransactionPage:
                 
                 with col1:
                     # Individual selection checkbox
-                    is_selected = select_all or st.checkbox("", key=f"select_{row['id']}")
+                    is_selected = select_all or st.checkbox("Select", key=f"select_{row['id']}", label_visibility="collapsed")
                     if is_selected:
                         selected_transactions.append(row['id'])
                 
@@ -253,6 +283,7 @@ class TransactionPage:
                 with col3:
                     # Delete button for individual transaction
                     if st.button("🗑️", key=f"delete_{row['id']}", help="Delete this transaction"):
+                        st.write(f"Debug - Deleting transaction {row['id']} with user_id: {user_id} (type: {type(user_id)})")
                         if TransactionPage._delete_single_transaction(row['id'], user_id, dict(row)):
                             st.success("Transaction deleted! Check undo options above to restore.")
                             st.rerun()

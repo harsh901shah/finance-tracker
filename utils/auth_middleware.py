@@ -32,7 +32,12 @@ class AuthMiddleware:
             if 'ft_user_id' in st.session_state:
                 return st.session_state.ft_user_id
             elif 'ft_user' in st.session_state:
-                return st.session_state.ft_user
+                user_data = st.session_state.ft_user
+                # If ft_user is a dict, extract user_id
+                if isinstance(user_data, dict) and 'user_id' in user_data:
+                    return user_data['user_id']
+                # Otherwise return the whole object
+                return user_data
         return None
     
     @staticmethod

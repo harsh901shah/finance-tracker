@@ -101,13 +101,19 @@ class DashboardFilters:
         current_year = current_date.year
         month_name = current_date.strftime('%B')
         
+        # Generate month options for current and future months
+        month_options = []
+        for year in [current_year, current_year + 1]:
+            for month in range(1, 13):
+                month_name_opt = datetime(year, month, 1).strftime('%B')
+                month_options.append(f"{month_name_opt} {year}")
+        
         # Advanced filters
         col1, col2, col3 = st.columns([2, 1, 1])
         with col1:
             selected_period = st.selectbox(
                 "Period",
-                [f"{month_name} {current_year}", "This Week", "Last Week", "Last 3 Months", 
-                 "Last 6 Months", "Year to Date", "Last 12 Months", "This Year", "Custom"],
+                month_options,
                 index=0
             )
         
@@ -127,28 +133,20 @@ class DashboardFilters:
         # Additional filters row
         col1, col2, col3 = st.columns(3)
         with col1:
-            date_range = None
-            if selected_period == "Custom":
-                first_day = date(current_year, current_month, 1)
-                today = date.today()
-                date_range = st.date_input(
-                    "Select date range",
-                    value=(first_day, today),
-                    min_value=date(2015, 1, 1),
-                    max_value=today
-                )
-        
-        with col2:
             payment_methods = st.multiselect(
                 "Payment Method",
                 ["Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"],
                 default=[]
             )
         
-        with col3:
+        with col2:
             apply_filter = st.button("Apply Filters", type="primary", use_container_width=True)
-            if selected_period != "Custom":
-                apply_filter = True
+        
+        # Auto-apply for month selections
+        if not apply_filter:
+            apply_filter = True
+        
+        date_range = None
         
         # Process filters
         date_filter = DashboardFilters._process_date_filter(selected_period, date_range, apply_filter)
@@ -162,35 +160,25 @@ class DashboardFilters:
     
     @staticmethod
     def _process_date_filter(selected_period, date_range, apply_filter):
-        """Process date filter based on selection"""
-        if selected_period == "Custom" and date_range and len(date_range) == 2 and apply_filter:
-            start_date, end_date = date_range
-            st.success(f"📅 Showing data from {start_date} to {end_date}")
-            return (start_date, end_date)
-        elif selected_period != "Custom" and apply_filter:
-            today = date.today()
-            if selected_period == "This Week":
-                start_date = today - timedelta(days=today.weekday())
-                return (start_date, today)
-            elif selected_period == "Last Week":
-                start_date = today - timedelta(days=today.weekday() + 7)
-                end_date = today - timedelta(days=today.weekday() + 1)
-                return (start_date, end_date)
-            elif selected_period == "Last 3 Months":
-                start_date = today - timedelta(days=90)
-                return (start_date, today)
-            elif selected_period == "Last 6 Months":
-                start_date = today - timedelta(days=180)
-                return (start_date, today)
-            elif selected_period == "Year to Date":
-                start_date = date(today.year, 1, 1)
-                return (start_date, today)
-            elif selected_period == "Last 12 Months":
-                start_date = today - timedelta(days=365)
-                return (start_date, today)
-            elif selected_period == "This Year":
-                start_date = date(today.year, 1, 1)
-                end_date = date(today.year, 12, 31)
-                return (start_date, min(end_date, today))
+        """Process date filter based on monthly selection"""
+        if apply_filter:
+            # Handle specific month selection (e.g., "August 2025")
+            import calendar
+            try:
+                # Parse month and year from selection
+                parts = selected_period.split()
+                if len(parts) == 2:
+                    month_name, year_str = parts
+                    year = int(year_str)
+                    month = datetime.strptime(month_name, '%B').month
+                    
+                    # Get first and last day of the month
+                    start_date = date(year, month, 1)
+                    last_day = calendar.monthrange(year, month)[1]
+                    end_date = date(year, month, last_day)
+                    
+                    return (start_date, end_date)
+            except (ValueError, IndexError):
+                pass
         
         return None
