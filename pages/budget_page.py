@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from services.financial_data_service import BudgetService, TransactionService
 
 class BudgetPage:
@@ -50,18 +50,41 @@ class BudgetPage:
         </style>
         """, unsafe_allow_html=True)
         
-        # Load data
-        budget_data = BudgetService.load_budget()
+        # Add period selector
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            st.markdown("")
+        with col2:
+            # Period selector
+            current_date = datetime.now()
+            month_options = []
+            for i in range(-6, 7):  # 6 months back to 6 months forward
+                month_date = current_date.replace(day=1) + timedelta(days=32*i)
+                month_date = month_date.replace(day=1)
+                month_options.append((month_date.strftime('%B %Y'), month_date.strftime('%m'), month_date.year))
+            
+            selected_period = st.selectbox(
+                "Budget Period",
+                options=range(len(month_options)),
+                format_func=lambda i: month_options[i][0],
+                index=6  # Current month
+            )
+            
+            selected_month = month_options[selected_period][1]
+            selected_year = month_options[selected_period][2]
+        
+        # Load data for selected period
+        budget_data = BudgetService.load_budget(month=selected_month, year=selected_year)
         transactions = TransactionService.load_transactions()
         
-        # Calculate spending
-        current_month = datetime.now().strftime('%Y-%m')
+        # Calculate spending for selected period
+        period_key = f"{selected_year}-{selected_month.zfill(2)}"
         monthly_spending = {}
         total_budget = sum(budget_data.values()) if budget_data else 0
         total_spent = 0
         
         for txn in transactions:
-            if txn.get('date', '').startswith(current_month) and txn.get('type') == 'expense':
+            if txn.get('date', '').startswith(period_key) and txn.get('type') == 'expense':
                 category = txn.get('category', 'Other')
                 amount = float(txn.get('amount', 0))
                 monthly_spending[category] = monthly_spending.get(category, 0) + amount
@@ -113,16 +136,60 @@ class BudgetPage:
                 
                 submitted = st.form_submit_button("💾 Save Budget", use_container_width=True, type="primary")
                 if submitted:
-                    # Filter out zero amounts
-                    filtered_budget = {k: v for k, v in budget_amounts.items() if v > 0}
-                    if filtered_budget:
-                        if BudgetService.save_budget(filtered_budget):
+                    try:
+                        # Validate inputs
+                        filtered_budget = {}
+                        validation_errors = []
+                        
+                        for category, amount in budget_amounts.items():
+                            if amount < 0:
+                                validation_errors.append(f"{category}: Amount cannot be negative")
+                            elif amount > 1000000:
+                                validation_errors.append(f"{category}: Amount too large (max $1,000,000)")
+                            elif amount > 0:
+                                filtered_budget[category] = amount
+                        
+                        if validation_errors:
+                            st.error("❌ **Validation Errors:**\n" + "\n".join(validation_errors))
+                            return
+                        
+                        if not filtered_budget:
+                            st.warning("⚠️ Please enter at least one budget amount greater than $0")
+                            return
+                        
+                        # Save budget for selected period
+                        budget_items = []
+                        for category, amount in filtered_budget.items():
+                            budget_items.append({
+                                'category': category,
+                                'amount': amount,
+                                'month': selected_month,
+                                'year': selected_year
+                            })
+                        
+                        # Save each budget item with error handling
+                        from services.database_service import DatabaseService
+                        from utils.auth_middleware import AuthMiddleware
+                        
+                        current_user = AuthMiddleware.get_current_user_id()
+                        user_id = current_user['user_id'] if isinstance(current_user, dict) else current_user
+                        
+                        success_count = 0
+                        for item in budget_items:
+                            if DatabaseService.add_budget(item, user_id):
+                                success_count += 1
+                        
+                        if success_count == len(budget_items):
                             st.success("✅ Budget saved successfully!")
                             st.rerun()
+                        elif success_count > 0:
+                            st.warning(f"⚠️ Partially saved: {success_count}/{len(budget_items)} categories")
                         else:
-                            st.error("❌ Failed to save budget")
-                    else:
-                        st.warning("⚠️ Please enter at least one budget amount")
+                            st.error("❌ Failed to save budget. Please try again.")
+                    
+                    except Exception as e:
+                        st.error(f"❌ **Budget Save Error**\n\nFailed to save budget: {str(e)}")
+                        st.info("💡 **Try:** Check your internet connection and try again.")
             
             st.markdown('</div>', unsafe_allow_html=True)
         

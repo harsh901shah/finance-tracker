@@ -209,7 +209,7 @@ class FinanceApp:
                             from services.financial_data_service import TransactionService
                             TransactionService.clear_cache(user_id)
                         except Exception as cache_error:
-                            logger.warning(f"Failed to clear cache on logout: {str(cache_error)}")
+                            self.logger.warning(f"Failed to clear cache on logout: {str(cache_error)}")
                         
                         if "ft_user" in st.session_state and st.session_state.ft_user and "session_token" in st.session_state.ft_user:
                             AuthService.logout(st.session_state.ft_user["session_token"])

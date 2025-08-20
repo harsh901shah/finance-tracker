@@ -14,6 +14,9 @@ class DashboardPage:
     @classmethod
     def show(cls):
         """Display the dashboard page"""
+        # Clear cache to ensure fresh data
+        TransactionService.clear_cache()
+        
         # Apply world-class CSS
         cls._apply_world_class_css()
         
@@ -23,6 +26,9 @@ class DashboardPage:
         
         # Compact filter bar
         date_filter, filters, apply_filter = cls._render_compact_filter_bar()
+        
+        # Force cache clear for live updates
+        TransactionService.clear_cache()
         
         # Get transactions data (force refresh)
         transactions = cls._get_transactions_data()
@@ -94,19 +100,19 @@ class DashboardPage:
         st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
         st.markdown("<h2>Cash Flow</h2>", unsafe_allow_html=True)
         
-        # Get real cash flow data
-        cash_flow_data = cls._get_real_cash_flow_data()
+        # Get real cash flow data with timeline view (6 months default)
+        cash_flow_data = cls._get_real_cash_flow_data(date_filter if apply_filter else None, months_to_show=6)
         
-        # Create cash flow chart
-        fig = cls._create_cash_flow_chart(cash_flow_data)
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        # Create modern timeline cash flow chart
+        fig = cls._create_cash_flow_chart(cash_flow_data, months_to_show=6)
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False, 'responsive': True})
         st.markdown("</div>", unsafe_allow_html=True)
         
         # Two-column section with robust data handling
         col1, col2 = st.columns(2)
         
-        # Get and normalize transaction data
-        tx_data = cls._get_normalized_transactions(transactions)
+        # Get and normalize transaction data with period filter
+        tx_data = cls._get_normalized_transactions(transactions, date_filter if apply_filter else None)
         
         with col1:
             st.markdown("### Spending by Category")
@@ -127,7 +133,7 @@ class DashboardPage:
             st.markdown("### Budget Progress")
             st.caption("Monthly budget tracking")
             
-            budget_data = cls._get_budget_progress(tx_data['spending_by_category'])
+            budget_data = cls._get_budget_progress(tx_data['spending_by_category'], date_filter if apply_filter else None)
             
             if not budget_data:
                 st.info("No budgets set or no spending this month.")
@@ -142,8 +148,8 @@ class DashboardPage:
         st.markdown("<div class='transactions-container'>", unsafe_allow_html=True)
         st.markdown("<h2>Recent Transactions</h2>", unsafe_allow_html=True)
         
-        # Get real recent transactions data
-        transactions_data = cls._get_real_recent_transactions()
+        # Get real recent transactions data with period filter
+        transactions_data = cls._get_real_recent_transactions(date_filter if apply_filter else None)
         
         # Display transactions table
         cls._display_transactions_table(transactions_data)
@@ -160,18 +166,27 @@ class DashboardPage:
     
     @staticmethod
     def _get_transactions_data():
-        """Get transactions data from the database"""
+        """Get transactions data from the database with comprehensive error handling"""
         try:
             # Force fresh data load with proper user isolation
             transactions = TransactionService.load_transactions()
             return transactions
+        except ConnectionError:
+            st.error("🔌 **Database Connection Error**\n\nCannot connect to the database. Please check if the application is properly configured.")
+            st.info("💡 **Try:** Restart the application or contact support if the issue persists.")
+            return []
+        except PermissionError:
+            st.error("🔒 **Database Permission Error**\n\nInsufficient permissions to access financial data.")
+            st.info("💡 **Try:** Check file permissions or contact your system administrator.")
+            return []
         except Exception as e:
-            st.error(f"Error loading transactions: {str(e)}")
+            st.error(f"⚠️ **Data Loading Failed**\n\nUnable to load your financial data: {str(e)}")
+            st.info("💡 **Try:** Refresh the page or contact support if the problem continues.")
             return []
     
     @staticmethod
     def _get_filtered_data(date_filter=None, filters=None):
-        """Get financial data with advanced filtering"""
+        """Get financial data with advanced filtering and error handling"""
         try:
             transactions = TransactionService.load_transactions()
             
@@ -184,40 +199,54 @@ class DashboardPage:
             expenses = 0
             
             for transaction in transactions:
-                transaction_date = transaction.get('date', '')
-                transaction_type = transaction.get('type', '')
-                transaction_category = transaction.get('category', '')
-                transaction_payment = transaction.get('payment_method', '')
-                
-                # Apply date filter only if specified
-                if date_filter:
-                    if not (start_str <= transaction_date <= end_str):
+                try:
+                    transaction_date = transaction.get('date', '')
+                    transaction_type = transaction.get('type', '')
+                    transaction_category = transaction.get('category', '')
+                    transaction_payment = transaction.get('payment_method', '')
+                    
+                    # Apply date filter only if specified
+                    if date_filter:
+                        if not (start_str <= transaction_date <= end_str):
+                            continue
+                    
+                    # Transaction type filter
+                    if filters and filters.get('transaction_types') and transaction_type not in filters['transaction_types']:
                         continue
-                
-                # Transaction type filter
-                if filters and filters.get('transaction_types') and transaction_type not in filters['transaction_types']:
+                    
+                    # Category filter
+                    if filters and filters.get('categories') and transaction_category not in filters['categories']:
+                        continue
+                    
+                    # Payment method filter
+                    if filters and filters.get('payment_methods') and transaction_payment not in filters['payment_methods']:
+                        continue
+                    
+                    # Validate and convert amount
+                    amount_str = transaction.get('amount', 0)
+                    if isinstance(amount_str, str):
+                        amount_str = amount_str.replace(',', '').replace('$', '')
+                    amount = float(amount_str)
+                    
+                    transaction_type_lower = transaction_type.lower().strip()
+                    
+                    # Include pre-tax and Roth contributions as income since they represent earned money
+                    if transaction_type_lower in ['income'] or (transaction_type_lower == 'transfer' and transaction_category.lower() in ['retirement', '401k', 'roth', 'pretax']):
+                        income += abs(amount)
+                    elif transaction_type_lower in ['expense']:
+                        expenses += abs(amount)
+                        
+                except (ValueError, TypeError) as e:
+                    # Skip invalid transactions but continue processing
                     continue
-                
-                # Category filter
-                if filters and filters.get('categories') and transaction_category not in filters['categories']:
-                    continue
-                
-                # Payment method filter
-                if filters and filters.get('payment_methods') and transaction_payment not in filters['payment_methods']:
-                    continue
-                
-                amount = float(transaction.get('amount', 0))
-                transaction_type_lower = transaction_type.lower().strip()
-                
-                # Include pre-tax and Roth contributions as income since they represent earned money
-                if transaction_type_lower in ['income'] or (transaction_type_lower == 'transfer' and transaction_category.lower() in ['retirement', '401k', 'roth', 'pretax']):
-                    income += abs(amount)
-                elif transaction_type_lower in ['expense']:
-                    expenses += abs(amount)
             
             return {'income': income, 'expenses': expenses}
+            
+        except ConnectionError:
+            st.error("🔌 **Connection Error**\n\nCannot load financial data due to connection issues.")
+            return {'income': 0, 'expenses': 0}
         except Exception as e:
-            print(f"Error getting current month data: {e}")
+            st.error(f"⚠️ **Data Processing Error**\n\nError processing financial data: {str(e)}")
             return {'income': 0, 'expenses': 0}
     
     @staticmethod
@@ -294,38 +323,33 @@ class DashboardPage:
             return {}
     
     @staticmethod
-    def _get_real_cash_flow_data():
-        """Get real cash flow data from transactions"""
+    def _get_real_cash_flow_data(date_filter=None, months_to_show=6):
+        """Get cash flow data with consistent monthly timeline (presentation only)"""
         try:
             transactions = TransactionService.load_transactions()
             
-            if not transactions:
-                return pd.DataFrame({
-                    'Month': [],
-                    'Income': [],
-                    'Expenses': [],
-                    'Net': []
-                })
-            
-            # Get last 6 months
+            # Show from January to current month
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=180)
+            start_date = datetime(end_date.year, 1, 1)  # January 1st of current year
             
-            # Initialize monthly data
+            # Initialize all months from Jan to current month with zeros
             monthly_data = {}
             current_date = start_date
             while current_date <= end_date:
                 month_key = current_date.strftime('%Y-%m')
-                month_name = current_date.strftime('%b %Y')
+                month_name = current_date.strftime('%b')
                 monthly_data[month_key] = {
                     'month_name': month_name,
                     'income': 0,
                     'expenses': 0
                 }
-                current_date = current_date.replace(day=28) + timedelta(days=4)
-                current_date = current_date.replace(day=1)
+                # Move to next month
+                if current_date.month == 12:
+                    current_date = current_date.replace(year=current_date.year + 1, month=1)
+                else:
+                    current_date = current_date.replace(month=current_date.month + 1)
             
-            # Process transactions
+            # Process transactions (unchanged logic)
             for transaction in transactions:
                 try:
                     transaction_date = datetime.strptime(transaction.get('date', ''), '%Y-%m-%d')
@@ -335,7 +359,6 @@ class DashboardPage:
                         amount = float(transaction.get('amount', 0))
                         transaction_type = transaction.get('type', '').lower().strip()
                         
-                        # Include pre-tax and Roth contributions as income since they represent earned money
                         if transaction_type in ['income'] or (transaction_type == 'transfer' and transaction.get('category', '').lower() in ['retirement', '401k', 'roth', 'pretax']):
                             monthly_data[month_key]['income'] += abs(amount)
                         elif transaction_type in ['expense']:
@@ -343,101 +366,178 @@ class DashboardPage:
                 except (ValueError, TypeError):
                     continue
             
-            # Create DataFrame
+            # Create timeline DataFrame
             months = []
             income = []
             expenses = []
+            net_clamped = []
+            deficit = []
             
             for month_key in sorted(monthly_data.keys()):
                 data = monthly_data[month_key]
+                income_total = data['income']
+                expense_total = data['expenses']
+                net_raw = income_total - expense_total
+                
                 months.append(data['month_name'])
-                income.append(data['income'])
-                expenses.append(data['expenses'])
+                income.append(income_total)
+                expenses.append(expense_total)
+                net_clamped.append(max(0.0, net_raw))
+                deficit.append(max(0.0, -net_raw))
             
-            df = pd.DataFrame({
+            return pd.DataFrame({
                 'Month': months,
                 'Income': income,
                 'Expenses': expenses,
-                'Net': [i - e for i, e in zip(income, expenses)]
+                'Net': net_clamped,
+                'Deficit': deficit
             })
-            
-            return df
             
         except Exception:
             return pd.DataFrame({
                 'Month': [],
                 'Income': [],
                 'Expenses': [],
-                'Net': []
+                'Net': [],
+                'Deficit': []
             })
     
     @staticmethod
-    def _create_cash_flow_chart(data):
-        """Create a cash flow chart using Plotly"""
+    def _create_cash_flow_chart(data, months_to_show=6):
+        """Create modern finance app timeline chart (Credit Karma style)"""
+        if data.empty:
+            return go.Figure()
+        
+        months = data['Month'].tolist()
+        incomes = data['Income'].tolist()
+        expenses = data['Expenses'].tolist()
+        net_values = data['Net'].tolist()
+        deficits = data['Deficit'].tolist()
+        
+        # Calculate nice y-axis max
+        max_val = max(max(incomes + expenses + net_values, default=0), 100)
+        def nice_max(val):
+            """Round up to nice tick values"""
+            if val <= 1000: return ((val // 100) + 1) * 100
+            elif val <= 5000: return ((val // 500) + 1) * 500
+            elif val <= 10000: return ((val // 1000) + 1) * 1000
+            else: return ((val // 5000) + 1) * 5000
+        
+        y_max = nice_max(max_val * 1.15)
+        
         fig = go.Figure()
         
-        # Add income bars
+        # Income bar (base layer)
         fig.add_trace(go.Bar(
-            x=data['Month'],
-            y=data['Income'],
-            name='Income',
-            marker_color='#4CAF50'
+            name="Income",
+            x=months,
+            y=incomes,
+            width=0.58,
+            marker=dict(color="#22c55e"),
+            marker_line_width=0,
+            text=[f"${v:,.0f}" if v > 0 else "" for v in incomes],
+            textposition="outside",
+            cliponaxis=False,
+            textfont_size=11,
+            hovertemplate="%{x}<br>Income: $%{y:,.0f}<extra></extra>"
         ))
         
-        # Add expenses bars
+        # Expenses bar (overlay, renders on top)
         fig.add_trace(go.Bar(
-            x=data['Month'],
-            y=data['Expenses'],
-            name='Expenses',
-            marker_color='#FF5252'
+            name="Expenses",
+            x=months,
+            y=expenses,
+            width=0.58,
+            marker=dict(
+                color="rgba(239,68,68,0.35)",
+                line=dict(width=0)
+            ),
+            text=[f"${v:,.0f}" if v > 0 else "" for v in expenses],
+            textposition="outside",
+            cliponaxis=False,
+            textfont_size=11,
+            hovertemplate="%{x}<br>Expenses: $%{y:,.0f}<extra></extra>"
         ))
         
-        # Add net line
+        # Net line (blue) - uses same categorical labels for center alignment
         fig.add_trace(go.Scatter(
-            x=data['Month'],
-            y=data['Net'],
-            name='Net',
-            mode='lines+markers',
-            line=dict(color='#2196F3', width=3),
-            marker=dict(size=8)
+            name="Net",
+            x=months,  # Same categorical labels as bars
+            y=net_values,
+            mode="lines+markers",
+            line=dict(color="#2563eb", width=3),
+            marker=dict(size=8, color="#2563eb"),
+            hovertemplate="%{x}<br>Net: $%{y:,.0f}<extra></extra>"
         ))
         
-        # Update layout
+        # Annotations for no income months
+        for month, net_y, income, deficit in zip(months, net_values, incomes, deficits):
+            if income == 0 and deficit > 0:
+                fig.add_annotation(
+                    x=month,
+                    y=0,
+                    text="No income recorded",
+                    showarrow=False,
+                    yshift=15,
+                    font=dict(size=10, color="#64748b")
+                )
+        
+        # Professional layout (Credit Karma style)
         fig.update_layout(
-            barmode='group',
-            margin=dict(l=20, r=20, t=20, b=20),
+            barmode="overlay",
+            bargap=0.30,
             legend=dict(
                 orientation="h",
-                yanchor="bottom",
-                y=1.02,
+                y=1.08,
+                x=1.0,
                 xanchor="right",
-                x=1
+                font_size=12
             ),
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(
-                family="Inter, sans-serif",
-                size=12,
-                color="#333333"
-            ),
-            xaxis=dict(
-                showgrid=False,
-                zeroline=False
-            ),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor='#E0E0E0',
-                zeroline=False,
-                tickprefix='$'
-            )
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(t=24, r=24, b=48, l=64),
+            autosize=True,
+            font=dict(family="Inter, sans-serif", size=12, color="#374151")
         )
+        
+        # Professional axis styling
+        fig.update_yaxes(
+            rangemode="tozero",
+            range=[0, y_max],
+            tickformat="$~s",  # Compact currency format ($1k, $2k, etc.)
+            showgrid=True,
+            gridcolor="#f3f4f6",
+            gridwidth=1,
+            tickcolor="#d1d5db",
+            linecolor="#d1d5db"
+        )
+        
+        fig.update_xaxes(
+            type="category",
+            categoryorder="array",
+            categoryarray=months,
+            showgrid=False,
+            tickcolor="#d1d5db",
+            linecolor="#d1d5db",
+            tickangle=0
+        )
+        
+        # Bars styled directly in traces above
+        
+        # Config will be passed to st.plotly_chart() instead
         
         return fig
     
     @staticmethod
-    def _get_normalized_transactions(transactions):
-        """Get normalized transaction data with robust filtering"""
-        current_month = datetime.now().strftime('%Y-%m')
+    def _get_normalized_transactions(transactions, date_filter=None):
+        """Get normalized transaction data with robust filtering and period support"""
+        if date_filter:
+            start_date, end_date = date_filter
+            start_str = start_date.strftime('%Y-%m-%d')
+            end_str = end_date.strftime('%Y-%m-%d')
+        else:
+            current_month = datetime.now().strftime('%Y-%m')
+            start_str = end_str = None
         
         # Normalize and filter transactions
         spending_by_category = {}
@@ -454,8 +554,14 @@ class DashboardPage:
             except (ValueError, TypeError):
                 tx_amount = 0
             
-            # Filter for current month expenses
-            if tx_date.startswith(current_month) and tx_type == 'expense' and tx_amount > 0:
+            # Filter for period expenses
+            date_match = False
+            if date_filter:
+                date_match = start_str <= tx_date <= end_str
+            else:
+                date_match = tx_date.startswith(current_month)
+            
+            if date_match and tx_type == 'expense' and tx_amount > 0:
                 spending_by_category[tx_category] = spending_by_category.get(tx_category, 0) + tx_amount
                 total_spent += tx_amount
         
@@ -469,11 +575,19 @@ class DashboardPage:
         }
     
     @staticmethod
-    def _get_budget_progress(spending_by_category):
-        """Get budget progress data with spending matched to budgets"""
+    def _get_budget_progress(spending_by_category, date_filter=None):
+        """Get budget progress data with spending matched to budgets for specific period"""
         try:
             from services.financial_data_service import BudgetService
-            budgets = BudgetService.load_budget()
+            
+            # Get budget for specific period if provided
+            if date_filter:
+                start_date, _ = date_filter
+                month = start_date.strftime('%m')
+                year = start_date.year
+                budgets = BudgetService.load_budget(month=month, year=year)
+            else:
+                budgets = BudgetService.load_budget()
             
             if not budgets:
                 return []
@@ -865,13 +979,20 @@ class DashboardPage:
         return fig
     
     @staticmethod
-    def _get_real_recent_transactions():
-        """Get real recent transactions data"""
+    def _get_real_recent_transactions(date_filter=None):
+        """Get real recent transactions data with optional period filter"""
         try:
             transactions = TransactionService.load_transactions()
             
             if not transactions:
                 return []
+            
+            # Filter by date if provided
+            if date_filter:
+                start_date, end_date = date_filter
+                start_str = start_date.strftime('%Y-%m-%d')
+                end_str = end_date.strftime('%Y-%m-%d')
+                transactions = [t for t in transactions if start_str <= t.get('date', '') <= end_str]
             
             # Format and sort transactions (newest first)
             formatted_transactions = []
@@ -943,27 +1064,89 @@ class DashboardPage:
     
     @staticmethod
     def _display_transactions_table(transactions):
-        """Display transactions in a table"""
+        """Display transactions in a styled table with exact-fit height"""
         if not transactions:
             st.info("No recent transactions found.")
             return
         
-        # Convert to DataFrame
-        df = pd.DataFrame(transactions)
+        # Guard against empty transactions
+        transactions = [t for t in transactions if isinstance(t, dict) and any(str(v).strip() for v in t.values())]
         
-        # Display as table
-        st.dataframe(
-            df,
-            column_config={
-                "date": st.column_config.DateColumn("Date"),
-                "category": st.column_config.TextColumn("Category"),
-                "merchant": st.column_config.TextColumn("Merchant"),
-                "amount": st.column_config.NumberColumn("Amount", format="$%.2f"),
-                "type": st.column_config.TextColumn("Type")
-            },
-            hide_index=True,
-            use_container_width=True
-        )
+        if not transactions:
+            st.info("No recent transactions found.")
+            return
+        
+        # Convert to DataFrame and drop empty rows
+        df = pd.DataFrame(transactions)
+        df = df.dropna(how='all').reset_index(drop=True)
+        
+        n = len(df)
+        if n == 0:
+            st.info("No recent transactions found.")
+            return
+        
+        # Add custom CSS for table styling
+        st.markdown("""
+        <style>
+        .stDataFrame {
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stDataFrame table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .stDataFrame thead th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+            padding: 12px 16px;
+        }
+        .stDataFrame tbody tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        .stDataFrame tbody tr:nth-child(odd) {
+            background: #ffffff;
+        }
+        .stDataFrame tbody tr:hover {
+            background: #f3f4f6;
+        }
+        .stDataFrame tbody td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Use different rendering based on row count
+        if n <= 10:
+            # Use st.table for small datasets (no filler rows)
+            df_fmt = df.copy()
+            if "amount" in df_fmt:
+                df_fmt["amount"] = df_fmt["amount"].map(lambda v: f"${v:,.2f}")
+            st.table(df_fmt.style.hide(axis="index"))
+        else:
+            # Use st.dataframe with exact-fit height for larger datasets
+            row_h = 38
+            head_h = 42
+            pad = 4
+            height = min(max(head_h + n * row_h + pad, 120), 420)
+            
+            st.dataframe(
+                df,
+                column_config={
+                    "date": st.column_config.DateColumn("Date"),
+                    "category": st.column_config.TextColumn("Category"),
+                    "merchant": st.column_config.TextColumn("Merchant"),
+                    "amount": st.column_config.NumberColumn("Amount", format="$%.2f"),
+                    "type": st.column_config.TextColumn("Type")
+                },
+                hide_index=True,
+                use_container_width=True,
+                height=height
+            )
     
     @staticmethod
     def _apply_world_class_css():

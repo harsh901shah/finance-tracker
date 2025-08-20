@@ -199,6 +199,7 @@ class OnboardingService:
             
             # Check if onboarding is complete
             if len(progress['completed_steps']) >= 4:
+                from datetime import datetime
                 progress['completed_at'] = str(datetime.now())
                 cls.update_user_progress(user_id, progress)
                 

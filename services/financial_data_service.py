@@ -166,10 +166,28 @@ class TransactionService:
 class BudgetService:
     """Service for handling budget data"""
     
+    @staticmethod
+    def _get_user_id(user_id: str = None) -> str:
+        """Helper method to get user ID from auth middleware"""
+        if user_id:
+            return user_id
+            
+        from utils.auth_middleware import AuthMiddleware
+        current_user = AuthMiddleware.get_current_user_id()
+        
+        if isinstance(current_user, dict) and 'user_id' in current_user:
+            return str(current_user['user_id'])
+        elif current_user:
+            return str(current_user)
+        else:
+            return 'default_user'
+    
     @classmethod
-    def save_budget(cls, budget_data: Dict[str, float]) -> bool:
-        """Save budget data to database"""
+    def save_budget(cls, budget_data: Dict[str, float], user_id: str = None) -> bool:
+        """Save budget data to database with user isolation"""
         try:
+            user_id = cls._get_user_id(user_id)
+            
             # Get current month and year
             current_month = datetime.now().strftime('%m')
             current_year = datetime.now().year
@@ -183,7 +201,7 @@ class BudgetService:
                     'year': current_year
                 }
                 
-                DatabaseService.add_budget(budget_item)
+                DatabaseService.add_budget(budget_item, user_id)
             
             return True
         except (ValueError, TypeError) as e:
@@ -194,15 +212,21 @@ class BudgetService:
             return False
     
     @classmethod
-    def load_budget(cls) -> Dict[str, float]:
-        """Load budget data from database"""
+    def load_budget(cls, user_id: str = None, month: str = None, year: int = None) -> Dict[str, float]:
+        """Load budget data from database for specific user and period"""
         try:
-            # Get current month and year
-            current_month = datetime.now().strftime('%m')
-            current_year = datetime.now().year
+            user_id = cls._get_user_id(user_id)
             
-            # Get budget items for current month
-            budget_items = DatabaseService.get_budget(current_month, current_year)
+            # Use provided month/year or default to current
+            if not month or not year:
+                current_month = datetime.now().strftime('%m')
+                current_year = datetime.now().year
+            else:
+                current_month = month
+                current_year = year
+            
+            # Get budget items for specified month/year and user
+            budget_items = DatabaseService.get_budget(current_month, current_year, user_id)
             
             # Convert to dictionary
             budget_data = {}
