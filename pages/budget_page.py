@@ -136,9 +136,27 @@ class BudgetPage:
                 
                 submitted = st.form_submit_button("💾 Save Budget", use_container_width=True, type="primary")
                 if submitted:
-                    # Filter out zero amounts
-                    filtered_budget = {k: v for k, v in budget_amounts.items() if v > 0}
-                    if filtered_budget:
+                    try:
+                        # Validate inputs
+                        filtered_budget = {}
+                        validation_errors = []
+                        
+                        for category, amount in budget_amounts.items():
+                            if amount < 0:
+                                validation_errors.append(f"{category}: Amount cannot be negative")
+                            elif amount > 1000000:
+                                validation_errors.append(f"{category}: Amount too large (max $1,000,000)")
+                            elif amount > 0:
+                                filtered_budget[category] = amount
+                        
+                        if validation_errors:
+                            st.error("❌ **Validation Errors:**\n" + "\n".join(validation_errors))
+                            return
+                        
+                        if not filtered_budget:
+                            st.warning("⚠️ Please enter at least one budget amount greater than $0")
+                            return
+                        
                         # Save budget for selected period
                         budget_items = []
                         for category, amount in filtered_budget.items():
@@ -149,24 +167,29 @@ class BudgetPage:
                                 'year': selected_year
                             })
                         
-                        # Save each budget item
-                        success = True
-                        for item in budget_items:
-                            from services.database_service import DatabaseService
-                            from utils.auth_middleware import AuthMiddleware
-                            current_user = AuthMiddleware.get_current_user_id()
-                            user_id = current_user['user_id'] if isinstance(current_user, dict) else current_user
-                            if not DatabaseService.add_budget(item, user_id):
-                                success = False
-                                break
+                        # Save each budget item with error handling
+                        from services.database_service import DatabaseService
+                        from utils.auth_middleware import AuthMiddleware
                         
-                        if success:
+                        current_user = AuthMiddleware.get_current_user_id()
+                        user_id = current_user['user_id'] if isinstance(current_user, dict) else current_user
+                        
+                        success_count = 0
+                        for item in budget_items:
+                            if DatabaseService.add_budget(item, user_id):
+                                success_count += 1
+                        
+                        if success_count == len(budget_items):
                             st.success("✅ Budget saved successfully!")
                             st.rerun()
+                        elif success_count > 0:
+                            st.warning(f"⚠️ Partially saved: {success_count}/{len(budget_items)} categories")
                         else:
-                            st.error("❌ Failed to save budget")
-                    else:
-                        st.warning("⚠️ Please enter at least one budget amount")
+                            st.error("❌ Failed to save budget. Please try again.")
+                    
+                    except Exception as e:
+                        st.error(f"❌ **Budget Save Error**\n\nFailed to save budget: {str(e)}")
+                        st.info("💡 **Try:** Check your internet connection and try again.")
             
             st.markdown('</div>', unsafe_allow_html=True)
         

@@ -27,6 +27,9 @@ class DashboardPage:
         # Compact filter bar
         date_filter, filters, apply_filter = cls._render_compact_filter_bar()
         
+        # Force cache clear for live updates
+        TransactionService.clear_cache()
+        
         # Get transactions data (force refresh)
         transactions = cls._get_transactions_data()
         
@@ -163,18 +166,27 @@ class DashboardPage:
     
     @staticmethod
     def _get_transactions_data():
-        """Get transactions data from the database"""
+        """Get transactions data from the database with comprehensive error handling"""
         try:
             # Force fresh data load with proper user isolation
             transactions = TransactionService.load_transactions()
             return transactions
+        except ConnectionError:
+            st.error("🔌 **Database Connection Error**\n\nCannot connect to the database. Please check if the application is properly configured.")
+            st.info("💡 **Try:** Restart the application or contact support if the issue persists.")
+            return []
+        except PermissionError:
+            st.error("🔒 **Database Permission Error**\n\nInsufficient permissions to access financial data.")
+            st.info("💡 **Try:** Check file permissions or contact your system administrator.")
+            return []
         except Exception as e:
-            st.error(f"Error loading transactions: {str(e)}")
+            st.error(f"⚠️ **Data Loading Failed**\n\nUnable to load your financial data: {str(e)}")
+            st.info("💡 **Try:** Refresh the page or contact support if the problem continues.")
             return []
     
     @staticmethod
     def _get_filtered_data(date_filter=None, filters=None):
-        """Get financial data with advanced filtering"""
+        """Get financial data with advanced filtering and error handling"""
         try:
             transactions = TransactionService.load_transactions()
             
@@ -187,40 +199,54 @@ class DashboardPage:
             expenses = 0
             
             for transaction in transactions:
-                transaction_date = transaction.get('date', '')
-                transaction_type = transaction.get('type', '')
-                transaction_category = transaction.get('category', '')
-                transaction_payment = transaction.get('payment_method', '')
-                
-                # Apply date filter only if specified
-                if date_filter:
-                    if not (start_str <= transaction_date <= end_str):
+                try:
+                    transaction_date = transaction.get('date', '')
+                    transaction_type = transaction.get('type', '')
+                    transaction_category = transaction.get('category', '')
+                    transaction_payment = transaction.get('payment_method', '')
+                    
+                    # Apply date filter only if specified
+                    if date_filter:
+                        if not (start_str <= transaction_date <= end_str):
+                            continue
+                    
+                    # Transaction type filter
+                    if filters and filters.get('transaction_types') and transaction_type not in filters['transaction_types']:
                         continue
-                
-                # Transaction type filter
-                if filters and filters.get('transaction_types') and transaction_type not in filters['transaction_types']:
+                    
+                    # Category filter
+                    if filters and filters.get('categories') and transaction_category not in filters['categories']:
+                        continue
+                    
+                    # Payment method filter
+                    if filters and filters.get('payment_methods') and transaction_payment not in filters['payment_methods']:
+                        continue
+                    
+                    # Validate and convert amount
+                    amount_str = transaction.get('amount', 0)
+                    if isinstance(amount_str, str):
+                        amount_str = amount_str.replace(',', '').replace('$', '')
+                    amount = float(amount_str)
+                    
+                    transaction_type_lower = transaction_type.lower().strip()
+                    
+                    # Include pre-tax and Roth contributions as income since they represent earned money
+                    if transaction_type_lower in ['income'] or (transaction_type_lower == 'transfer' and transaction_category.lower() in ['retirement', '401k', 'roth', 'pretax']):
+                        income += abs(amount)
+                    elif transaction_type_lower in ['expense']:
+                        expenses += abs(amount)
+                        
+                except (ValueError, TypeError) as e:
+                    # Skip invalid transactions but continue processing
                     continue
-                
-                # Category filter
-                if filters and filters.get('categories') and transaction_category not in filters['categories']:
-                    continue
-                
-                # Payment method filter
-                if filters and filters.get('payment_methods') and transaction_payment not in filters['payment_methods']:
-                    continue
-                
-                amount = float(transaction.get('amount', 0))
-                transaction_type_lower = transaction_type.lower().strip()
-                
-                # Include pre-tax and Roth contributions as income since they represent earned money
-                if transaction_type_lower in ['income'] or (transaction_type_lower == 'transfer' and transaction_category.lower() in ['retirement', '401k', 'roth', 'pretax']):
-                    income += abs(amount)
-                elif transaction_type_lower in ['expense']:
-                    expenses += abs(amount)
             
             return {'income': income, 'expenses': expenses}
+            
+        except ConnectionError:
+            st.error("🔌 **Connection Error**\n\nCannot load financial data due to connection issues.")
+            return {'income': 0, 'expenses': 0}
         except Exception as e:
-            print(f"Error getting current month data: {e}")
+            st.error(f"⚠️ **Data Processing Error**\n\nError processing financial data: {str(e)}")
             return {'income': 0, 'expenses': 0}
     
     @staticmethod
@@ -1038,27 +1064,89 @@ class DashboardPage:
     
     @staticmethod
     def _display_transactions_table(transactions):
-        """Display transactions in a table"""
+        """Display transactions in a styled table with exact-fit height"""
         if not transactions:
             st.info("No recent transactions found.")
             return
         
-        # Convert to DataFrame
-        df = pd.DataFrame(transactions)
+        # Guard against empty transactions
+        transactions = [t for t in transactions if isinstance(t, dict) and any(str(v).strip() for v in t.values())]
         
-        # Display as table
-        st.dataframe(
-            df,
-            column_config={
-                "date": st.column_config.DateColumn("Date"),
-                "category": st.column_config.TextColumn("Category"),
-                "merchant": st.column_config.TextColumn("Merchant"),
-                "amount": st.column_config.NumberColumn("Amount", format="$%.2f"),
-                "type": st.column_config.TextColumn("Type")
-            },
-            hide_index=True,
-            use_container_width=True
-        )
+        if not transactions:
+            st.info("No recent transactions found.")
+            return
+        
+        # Convert to DataFrame and drop empty rows
+        df = pd.DataFrame(transactions)
+        df = df.dropna(how='all').reset_index(drop=True)
+        
+        n = len(df)
+        if n == 0:
+            st.info("No recent transactions found.")
+            return
+        
+        # Add custom CSS for table styling
+        st.markdown("""
+        <style>
+        .stDataFrame {
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stDataFrame table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .stDataFrame thead th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+            padding: 12px 16px;
+        }
+        .stDataFrame tbody tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        .stDataFrame tbody tr:nth-child(odd) {
+            background: #ffffff;
+        }
+        .stDataFrame tbody tr:hover {
+            background: #f3f4f6;
+        }
+        .stDataFrame tbody td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Use different rendering based on row count
+        if n <= 10:
+            # Use st.table for small datasets (no filler rows)
+            df_fmt = df.copy()
+            if "amount" in df_fmt:
+                df_fmt["amount"] = df_fmt["amount"].map(lambda v: f"${v:,.2f}")
+            st.table(df_fmt.style.hide(axis="index"))
+        else:
+            # Use st.dataframe with exact-fit height for larger datasets
+            row_h = 38
+            head_h = 42
+            pad = 4
+            height = min(max(head_h + n * row_h + pad, 120), 420)
+            
+            st.dataframe(
+                df,
+                column_config={
+                    "date": st.column_config.DateColumn("Date"),
+                    "category": st.column_config.TextColumn("Category"),
+                    "merchant": st.column_config.TextColumn("Merchant"),
+                    "amount": st.column_config.NumberColumn("Amount", format="$%.2f"),
+                    "type": st.column_config.TextColumn("Type")
+                },
+                hide_index=True,
+                use_container_width=True,
+                height=height
+            )
     
     @staticmethod
     def _apply_world_class_css():

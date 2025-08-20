@@ -68,8 +68,8 @@ class AuthService:
     DB_FILE = 'finance_tracker.db'
     logger = LoggerService.get_logger('auth_service')
     
-    # Default session duration in days
-    SESSION_DURATION_DAYS = 30
+    # Default session duration in days (reduced for better security)
+    SESSION_DURATION_DAYS = 7
     
     # Maximum age of expired sessions to keep (in days)
     SESSION_CLEANUP_THRESHOLD_DAYS = 7
@@ -334,7 +334,7 @@ class AuthService:
             # Using cryptographically secure random token generation
             session_token = cls._generate_session_token()
             
-            # Calculate session expiry (default: 30 days from now)
+            # Calculate session expiry (default: 7 days from now)
             # This ensures sessions eventually expire for security
             expires_at = (datetime.now() + timedelta(days=cls.SESSION_DURATION_DAYS)).isoformat()
             
