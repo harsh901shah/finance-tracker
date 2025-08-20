@@ -308,7 +308,12 @@ class AuthService:
             user = cursor.fetchone()
             if not user:
                 cls.logger.warning(f"Login attempt with invalid {login_type}: {identifier}")
-                raise InvalidCredentialsError("Invalid credentials")
+                if login_type == "email":
+                    raise InvalidCredentialsError("No account found with this email address. Please check your email or create a new account.")
+                elif login_type == "phone":
+                    raise InvalidCredentialsError("No account found with this phone number. Please check your number or create a new account.")
+                else:
+                    raise InvalidCredentialsError("No account found with this username. Please check your username or create a new account.")
             
             user_id, username, db_password_hash, salt, email, phone_number, full_name, is_active = user
             
@@ -316,14 +321,14 @@ class AuthService:
             # This allows administrators to disable accounts without deleting them
             if not is_active:
                 cls.logger.warning(f"Login attempt on disabled account: {username}")
-                raise AccountDisabledError("Account is disabled")
+                raise AccountDisabledError("Your account has been temporarily disabled. Please contact support for assistance.")
             
             # Verify password by comparing hashes
             # This is a secure way to verify passwords without storing plaintext
             password_hash = cls._hash_password(password, salt)
             if password_hash != db_password_hash:
                 cls.logger.warning(f"Login attempt with invalid password for user: {username}")
-                raise InvalidCredentialsError("Invalid credentials")
+                raise InvalidCredentialsError("Incorrect password. Please try again or reset your password.")
                 
             # Generate a new session token for persistent authentication
             # Using cryptographically secure random token generation

@@ -101,42 +101,91 @@ class DashboardFilters:
         current_year = current_date.year
         month_name = current_date.strftime('%B')
         
-        # Generate month options for current and future months
+        # Smart year selection with previous year toggle
+        show_previous = st.checkbox("Show Previous Year", value=False, help="Toggle to view previous year data")
+        
+        if show_previous:
+            year_to_show = current_year - 1
+            help_text = f"Viewing {year_to_show} data"
+            default_month = 12  # December of previous year
+        else:
+            year_to_show = current_year
+            help_text = f"Viewing {year_to_show} data"
+            default_month = current_month  # Current month of current year
+        
+        # Generate months for selected year only
         month_options = []
-        for year in [current_year, current_year + 1]:
-            for month in range(1, 13):
-                month_name_opt = datetime(year, month, 1).strftime('%B')
-                month_options.append(f"{month_name_opt} {year}")
+        for month in range(1, 13):
+            month_date = datetime(year_to_show, month, 1)
+            month_label = month_date.strftime('%B %Y')
+            month_options.append(month_label)
+        
+        # Set default index
+        default_idx = default_month - 1  # Convert to 0-based index
+        
+        # Initialize session state for filters if not exists
+        current_label = datetime(current_year, current_month, 1).strftime('%B %Y')
+        if 'filter_period' not in st.session_state:
+            st.session_state.filter_period = current_label
+        if 'filter_txn_types' not in st.session_state:
+            st.session_state.filter_txn_types = ["Income", "Expense"]
+        if 'filter_category' not in st.session_state:
+            st.session_state.filter_category = "All Categories"
+        if 'filter_payment' not in st.session_state:
+            st.session_state.filter_payment = []
         
         # Advanced filters
         col1, col2, col3 = st.columns([2, 1, 1])
         with col1:
+            # Force period to be from predefined list only
+            period_idx = month_options.index(st.session_state.filter_period) if st.session_state.filter_period in month_options else default_idx
             selected_period = st.selectbox(
                 "Period",
                 month_options,
-                index=0
+                index=default_idx,
+                help=help_text,
+                key="period_selector"
             )
         
         with col2:
+            # Force transaction types to be from predefined list only
+            valid_txn_types = [t for t in st.session_state.filter_txn_types if t in ["Income", "Expense", "Investment", "Transfer"]]
             transaction_types = st.multiselect(
                 "Transaction Type",
-                ["Income", "Expense", "Investment", "Transfer"],
-                default=["Income", "Expense"]
+                options=["Income", "Expense", "Investment", "Transfer"],
+                default=valid_txn_types,
+                help="Select transaction types to include",
+                key="txn_type_selector",
+                on_change=lambda: setattr(st.session_state, 'filter_txn_types', [t for t in st.session_state.txn_type_selector if t in ["Income", "Expense", "Investment", "Transfer"]])
             )
         
         with col3:
             all_categories = ["All Categories", "Salary", "Investment", "Tax", "Retirement", "Healthcare", 
                             "Housing", "Transportation", "Utilities", "Shopping", "Credit Card", 
                             "Savings", "Transfer", "Food", "Entertainment", "Other"]
-            selected_categories = st.selectbox("Category", all_categories, index=0)
+            # Force category to be from predefined list only
+            cat_idx = all_categories.index(st.session_state.filter_category) if st.session_state.filter_category in all_categories else 0
+            selected_categories = st.selectbox(
+                "Category", 
+                options=all_categories, 
+                index=cat_idx,
+                help="Select category to filter by",
+                key="category_selector",
+                on_change=lambda: setattr(st.session_state, 'filter_category', st.session_state.category_selector if st.session_state.category_selector in all_categories else "All Categories")
+            )
         
         # Additional filters row
         col1, col2, col3 = st.columns(3)
         with col1:
+            # Force payment methods to be from predefined list only
+            valid_payment_methods = [p for p in st.session_state.filter_payment if p in ["Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"]]
             payment_methods = st.multiselect(
                 "Payment Method",
-                ["Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"],
-                default=[]
+                options=["Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"],
+                default=valid_payment_methods,
+                help="Select payment methods to include",
+                key="payment_method_selector",
+                on_change=lambda: setattr(st.session_state, 'filter_payment', [p for p in st.session_state.payment_method_selector if p in ["Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"]])
             )
         
         with col2:

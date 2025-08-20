@@ -299,42 +299,43 @@ class LoginPage:
             color: var(--text-color);
         }
         
-        /* Hero section */
+        /* Hero section - more compact */
         .hero-content {
             padding: 0;
+            margin-top: 1rem;
         }
         
         .hero-content h1 {
-            font-size: 2.25rem;
+            font-size: 2rem;
             font-weight: 700;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
             line-height: 1.2;
             color: var(--text-color);
         }
         
         .hero-subtitle {
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: var(--text-light);
-            margin-bottom: 1.25rem;
+            margin-bottom: 1rem;
             line-height: 1.4;
         }
         
-        /* Feature grid */
+        /* Feature grid - more compact */
         .feature-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-top: 1.25rem;
+            gap: 0.75rem;
+            margin-top: 1rem;
         }
         
         .feature-card {
             display: flex;
             align-items: flex-start;
-            gap: 0.75rem;
-            padding: 0.75rem;
+            gap: 0.5rem;
+            padding: 0.5rem;
             background-color: var(--card-background);
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             transition: transform 0.2s, box-shadow 0.2s;
         }
         
@@ -344,30 +345,30 @@ class LoginPage:
         }
         
         .feature-icon {
-            font-size: 2rem;
+            font-size: 1.5rem;
             line-height: 1;
         }
         
         .feature-text h3 {
-            font-size: 1rem;
+            font-size: 0.875rem;
             font-weight: 600;
-            margin: 0 0 0.5rem 0;
+            margin: 0 0 0.25rem 0;
         }
         
         .feature-text p {
-            font-size: 0.875rem;
+            font-size: 0.75rem;
             color: var(--text-light);
             margin: 0;
         }
         
-        /* Auth container */
+        /* Auth container - more compact */
         .auth-container {
             background-color: var(--card-background);
             border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            max-width: 420px;
-            margin: 0;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            padding: 1.25rem;
+            max-width: 380px;
+            margin: 1rem 0;
         }
         
         /* Auth form */
@@ -574,28 +575,31 @@ class LoginPage:
             font-size: 0.875rem;
         }
         
-        /* Quote section */
+        /* Quote section - more compact */
         .quote-section {
-            padding: 1rem 0;
+            padding: 1.5rem 0;
             text-align: center;
-            margin-top: 0;
+            margin-top: 1rem;
+            background-color: #F8FAFC;
+            border-radius: 0.75rem;
         }
         
         .quote-container {
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
+            padding: 0 1rem;
         }
         
         .quote-text {
-            font-size: 1.5rem;
+            font-size: 1.1rem;
             font-style: italic;
             color: var(--text-color);
-            margin-bottom: 1rem;
-            line-height: 1.5;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
         }
         
         .quote-author {
-            font-size: 1rem;
+            font-size: 0.9rem;
             color: var(--text-light);
             font-weight: 500;
         }

@@ -63,7 +63,8 @@ class AuthComponents:
         with col1:
             st.checkbox("Remember me", value=True)
         with col2:
-            st.markdown('<div style="text-align: right;"><a href="#" class="text-link">Forgot password?</a></div>', unsafe_allow_html=True)
+            st.markdown('<div style="text-align: right; margin-top: 8px;"><a href="#" class="text-link">Forgot password?</a></div>', unsafe_allow_html=True)
+        
         
         # Login button - full width
         login_button = st.button("Sign In", type="primary", use_container_width=True, key="login_button")
@@ -167,7 +168,12 @@ class AuthComponents:
         try:
             # Validate required fields
             if not identifier or not password:
-                st.error("Please enter both identifier and password")
+                if login_type == "email":
+                    st.error("Please enter your email and password")
+                elif login_type == "phone":
+                    st.error("Please enter your phone number and password")
+                else:
+                    st.error("Please enter your username and password")
                 return False
             
             # Show loading spinner during authentication
@@ -176,7 +182,7 @@ class AuthComponents:
                 success, message, user_data = AuthService.login(identifier, password, login_type)
             
             if success:
-                st.success(message)
+                st.success(f"Welcome back, {user_data['full_name']}!")
                 
                 # Store user data in session state for persistent authentication
                 st.session_state.ft_user = user_data
@@ -223,7 +229,8 @@ class AuthComponents:
         
         try:
             # Validate all required fields
-            if not username or not password or not email or not phone_number or not full_name:
+            if not username or not password or not email or not phone_number or not full_name or \
+               not username.strip() or not password.strip() or not email.strip() or not phone_number.strip() or not full_name.strip():
                 st.error("All fields are required")
                 return False
             elif password != confirm_password:

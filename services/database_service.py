@@ -110,9 +110,10 @@ class DatabaseService:
                 amount REAL NOT NULL,
                 month TEXT NOT NULL,
                 year INTEGER NOT NULL,
+                user_id TEXT NOT NULL DEFAULT 'default_user',
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(category, month, year)
+                UNIQUE(category, month, year, user_id)
             )
             ''')
             
@@ -564,22 +565,32 @@ class DatabaseService:
     
     # Budget methods
     @classmethod
-    def add_budget(cls, budget_item: Dict[str, Any]) -> int:
-        """Add or update a budget item in the database"""
+    def add_budget(cls, budget_item: Dict[str, Any], user_id: str) -> int:
+        """Add or update a budget item in the database with user isolation"""
         conn = cls.get_connection()
         cursor = conn.cursor()
         
         try:
+            # Add user_id column if it doesn't exist
+            cursor.execute("PRAGMA table_info(budget)")
+            columns = [column[1] for column in cursor.fetchall()]
+            if 'user_id' not in columns:
+                cursor.execute('ALTER TABLE budget ADD COLUMN user_id TEXT')
+                # Update existing budget items to default user for migration
+                cursor.execute('UPDATE budget SET user_id = ? WHERE user_id IS NULL', ('default_user',))
+                conn.commit()
+            
             cursor.execute('''
-            INSERT INTO budget (category, amount, month, year)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(category, month, year) 
+            INSERT INTO budget (category, amount, month, year, user_id)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(category, month, year, user_id) 
             DO UPDATE SET amount = ?, updated_at = CURRENT_TIMESTAMP
             ''', (
                 budget_item.get('category'),
                 budget_item.get('amount'),
                 budget_item.get('month'),
                 budget_item.get('year'),
+                str(user_id),
                 budget_item.get('amount')
             ))
             
@@ -603,20 +614,31 @@ class DatabaseService:
         return budget_id
     
     @classmethod
-    def get_budget(cls, month: Optional[str] = None, year: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Get budget items from the database, optionally filtered by month and year"""
+    def get_budget(cls, month: Optional[str] = None, year: Optional[int] = None, user_id: str = None) -> List[Dict[str, Any]]:
+        """Get budget items from the database for specific user, optionally filtered by month and year"""
         conn = cls.get_connection()
         cursor = conn.cursor()
         
+        # Add user_id column if it doesn't exist
+        cursor.execute("PRAGMA table_info(budget)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' not in columns:
+            cursor.execute('ALTER TABLE budget ADD COLUMN user_id TEXT')
+            cursor.execute('UPDATE budget SET user_id = ? WHERE user_id IS NULL', ('default_user',))
+            conn.commit()
+        
+        if not user_id:
+            return []  # Don't return any budget data without user_id
+        
         if month and year:
-            cursor.execute('SELECT * FROM budget WHERE month = ? AND year = ?', (month, year))
+            cursor.execute('SELECT * FROM budget WHERE month = ? AND year = ? AND user_id = ?', (month, year, str(user_id)))
         elif year:
-            cursor.execute('SELECT * FROM budget WHERE year = ?', (year,))
+            cursor.execute('SELECT * FROM budget WHERE year = ? AND user_id = ?', (year, str(user_id)))
         else:
             # Default to current month and year
             current_month = datetime.now().strftime('%Y-%m')
             year, month = current_month.split('-')
-            cursor.execute('SELECT * FROM budget WHERE month = ? AND year = ?', (month, int(year)))
+            cursor.execute('SELECT * FROM budget WHERE month = ? AND year = ? AND user_id = ?', (month, int(year), str(user_id)))
             
         budget_items = [dict(row) for row in cursor.fetchall()]
         

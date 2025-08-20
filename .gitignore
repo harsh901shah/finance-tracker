@@ -19,6 +19,13 @@ secrets.yaml
 *.key
 *.pem
 
+# Testing and CI/CD
+tests/
+run_tests.py
+pre-commit-hook.sh
+.github/
+.flake8
+
 # Cache and temporary files
 __pycache__/
 *.py[cod]
