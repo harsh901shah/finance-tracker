@@ -197,7 +197,7 @@ class DashboardFilters:
     
     @staticmethod
     def _process_date_filter(selected_period, date_range, apply_filter):
-        """Process date filter based on monthly selection"""
+        """Process date filter based on monthly selection with proper date handling"""
         # Always process the selected period, not just when Apply is clicked
         import calendar
         try:
@@ -208,13 +208,13 @@ class DashboardFilters:
                 year = int(year_str)
                 month = datetime.strptime(month_name, '%B').month
                 
-                # Get first and last day of the month
+                # Get first and last day of the month using proper date objects
                 start_date = date(year, month, 1)
                 last_day = calendar.monthrange(year, month)[1]
                 end_date = date(year, month, last_day)
                 
                 return (start_date, end_date)
-        except (ValueError, IndexError):
-            pass
+        except (ValueError, IndexError) as e:
+            AppLogger.log_error(f"Error parsing date filter: {selected_period}", e, show_user=False)
         
         return None

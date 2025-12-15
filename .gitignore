@@ -67,4 +67,4 @@ temp.pdf
 temp_*
 
 # Log files
-logs/
+logs/migration_data.py

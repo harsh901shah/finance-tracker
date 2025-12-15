@@ -22,14 +22,19 @@ class TransactionFormHandler:
             else:
                 amount = st.number_input("Amount ($)", min_value=0.01, step=0.01, key=f"{form_key}_amount")
             transaction_date = st.date_input("Date", value=date.today(), key=f"{form_key}_date")
-            # Create payment method list without duplicates
-            payment_methods = ["Bank Transfer", "Credit Card", "Cash", "Cheque", "Direct Deposit"]
-            if default_payment_method not in payment_methods:
-                payment_methods.insert(0, default_payment_method)
+            # Create payment method list using constants
+            from config.constants import PaymentMethods
+            payment_methods = PaymentMethods.DEFAULT.copy()
+            
+            # Normalize default payment method
+            normalized_default = PaymentMethods.normalize(default_payment_method)
+            
+            if normalized_default not in payment_methods:
+                payment_methods.insert(0, normalized_default)
             else:
                 # Move default to front if it exists in the list
-                payment_methods.remove(default_payment_method)
-                payment_methods.insert(0, default_payment_method)
+                payment_methods.remove(normalized_default)
+                payment_methods.insert(0, normalized_default)
             
             payment_method = st.selectbox("Payment Method", payment_methods, key=f"{form_key}_payment")
             notes = st.text_input("Notes (optional)", placeholder="Add details here...", key=f"{form_key}_notes")
@@ -51,12 +56,20 @@ class TransactionFormHandler:
     @staticmethod
     def _process_transaction(description, amount, transaction_date, transaction_type, category, payment_method, notes, form_key):
         """Process transaction with validation and duplicate detection"""
-        # Input validation
-        if amount is None or amount <= 0:
-            st.error("Amount must be greater than zero")
-            return
-        elif not transaction_date:
-            st.error("Date is required")
+        from utils.validation import InputValidator
+        
+        # Comprehensive validation
+        transaction_data = {
+            'amount': amount,
+            'description': description,
+            'date': transaction_date,
+            'type': transaction_type
+        }
+        
+        is_valid, errors = InputValidator.validate_transaction_data(transaction_data)
+        if not is_valid:
+            for error in errors:
+                st.error(error)
             return
         
         try:
@@ -162,7 +175,7 @@ class TransactionFormHandler:
                             DatabaseService.update_asset(asset['id'], new_value, transaction.get('date'))
             
         except Exception as e:
-            print(f"Warning: Could not update net worth: {e}")
+            logger.warning(f"Could not update net worth: {e}")
     
     @staticmethod
     def _clear_session_states():
@@ -243,9 +256,8 @@ class UtilitiesFormHandler:
                 default_amount = AppConfig.UTILITY_TYPES.get(utility_type, 100.0)
                 
                 amount = st.number_input("Amount ($)", value=default_amount, step=0.01, key=f"{form_key}_amount")
-                payment_method = st.selectbox("Payment Method", [
-                    "Bank Transfer", "Credit Card", "Cash", "Cheque", "Direct Deposit"
-                ], key=f"{form_key}_payment")
+                payment_method = st.selectbox("Payment Method", 
+                    AppConfig.PaymentMethods.DEFAULT, key=f"{form_key}_payment")
                 notes = st.text_input("Notes (optional)", placeholder="Add details here...", key=f"{form_key}_notes")
                 
                 col_cancel, col_add = st.columns(2)

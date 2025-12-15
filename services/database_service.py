@@ -43,6 +43,13 @@ class DatabaseService:
     @classmethod
     def initialize_database(cls):
         """Create database tables if they don't exist"""
+        # Run migrations first
+        try:
+            from services.migration_service import MigrationService
+            MigrationService.run_all_migrations()
+        except Exception as e:
+            logger.warning(f"Migration system not available: {e}")
+        
         conn = None
         try:
             conn = cls.get_connection()
@@ -584,29 +591,21 @@ class DatabaseService:
     @classmethod
     def add_budget(cls, budget_item: Dict[str, Any], user_id: str) -> int:
         """Add or update a budget item in the database with user isolation"""
+        # Validate required fields
+        if not budget_item.get('category'):
+            logger.warning("Budget category is required")
+            return 0
+        if budget_item.get('amount') is None or budget_item.get('amount') < 0:
+            logger.warning(f"Invalid budget amount: {budget_item.get('amount')}")
+            return 0
+        if not budget_item.get('month') or not budget_item.get('year'):
+            logger.warning("Budget month and year are required")
+            return 0
+        
         conn = cls.get_connection()
         cursor = conn.cursor()
         
         try:
-            # Validate required fields
-            if not budget_item.get('category'):
-                logger.warning("Budget category is required")
-                return 0
-            if budget_item.get('amount') is None or budget_item.get('amount') < 0:
-                logger.warning(f"Invalid budget amount: {budget_item.get('amount')}")
-                return 0
-            if not budget_item.get('month') or not budget_item.get('year'):
-                logger.warning("Budget month and year are required")
-                return 0
-            
-            # Add user_id column if it doesn't exist
-            cursor.execute("PRAGMA table_info(budget)")
-            columns = [column[1] for column in cursor.fetchall()]
-            if 'user_id' not in columns:
-                cursor.execute('ALTER TABLE budget ADD COLUMN user_id TEXT')
-                cursor.execute('UPDATE budget SET user_id = ? WHERE user_id IS NULL', ('default_user',))
-                conn.commit()
-            
             # Check if budget item already exists
             cursor.execute('''
             SELECT id FROM budget 
@@ -642,7 +641,7 @@ class DatabaseService:
                 budget_id = cursor.lastrowid
             
             conn.commit()
-            return budget_id
+            return budget_id if budget_id else 0
             
         except sqlite3.IntegrityError as e:
             logger.warning(f"Budget constraint violation for {budget_item.get('category', 'unknown')}: {str(e)}")
