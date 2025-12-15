@@ -9,12 +9,12 @@ class DatabaseConstants:
 
 class TransactionTypes:
     INCOME = "Income"
-    EXPENSE = "Expense" 
+    EXPENSE = "Expense"
     INVESTMENT = "Investment"
     TRANSFER = "Transfer"
     TAX = "Tax"
     
-    ALL = [INCOME, EXPENSE, INVESTMENT, TRANSFER, TAX]
+    ALL = [INCOME, EXPENSE, INVESTMENT, TRANSFER]
     DEFAULT_FILTER = [INCOME, EXPENSE]
 
 class Categories:

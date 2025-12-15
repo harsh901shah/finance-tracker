@@ -82,6 +82,11 @@ class MigrationService:
     @classmethod
     def column_exists(cls, table_name: str, column_name: str) -> bool:
         """Check if column exists in table"""
+        # Whitelist table names for security
+        allowed_tables = {'transactions', 'budget', 'assets', 'liabilities', 'real_estate'}
+        if table_name not in allowed_tables:
+            raise ValueError(f"Table {table_name} not allowed")
+            
         conn = cls.get_connection()
         cursor = conn.cursor()
         
@@ -94,6 +99,15 @@ class MigrationService:
     @classmethod
     def add_column_if_not_exists(cls, table_name: str, column_name: str, column_definition: str):
         """Add column only if it doesn't exist"""
+        # Whitelist table names for security
+        allowed_tables = {'transactions', 'budget', 'assets', 'liabilities', 'real_estate'}
+        if table_name not in allowed_tables:
+            raise ValueError(f"Table {table_name} not allowed")
+            
+        # Validate column definition format
+        if not column_definition.startswith(column_name):
+            raise ValueError(f"Column definition must start with column name {column_name}")
+            
         if not cls.column_exists(table_name, column_name):
             conn = cls.get_connection()
             cursor = conn.cursor()
