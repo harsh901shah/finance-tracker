@@ -15,8 +15,17 @@ ALLOWED_MIGRATION_TABLES = {'transactions', 'budget', 'assets', 'liabilities', '
 # Strict identifier validation (letters, digits, underscore, not starting with digit)
 IDENT_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
-# Dangerous SQL keywords that must be blocked
-DANGEROUS_KEYWORDS = re.compile(r'\b(DROP|ATTACH|DETACH|PRAGMA|BEGIN|COMMIT|ALTER\s+TABLE|DELETE|INSERT|UPDATE|CREATE|EXEC)\b', re.IGNORECASE)
+# Dangerous SQL keywords that must be blocked (comprehensive list)
+DANGEROUS_KEYWORDS = re.compile(r'\b(DROP|ATTACH|DETACH|PRAGMA|BEGIN|COMMIT|ALTER\s+TABLE|DELETE|INSERT|UPDATE|CREATE|EXEC|SELECT|WITH|TRIGGER|VACUUM|VALUES|REPLACE)\b', re.IGNORECASE)
+
+# Allowed SQL data types (whitelist)
+ALLOWED_TYPES = {'TEXT', 'INTEGER', 'REAL', 'BLOB', 'NUMERIC'}
+
+# Allowed constraints (whitelist)
+ALLOWED_CONSTRAINTS = {'NOT NULL', 'NULL', 'UNIQUE', 'PRIMARY KEY', 'DEFAULT'}
+
+# Safe column definition pattern (handles quotes, brackets, and constraints)
+COLUMN_DEF_PATTERN = re.compile(r'^\s*([`"\[]?\w+[`"\]]?)\s+(TEXT|INTEGER|REAL|BLOB|NUMERIC)(?:\s+(NOT\s+NULL|NULL|UNIQUE|PRIMARY\s+KEY|DEFAULT\s+["\']?[^;]*["\']?))*\s*$', re.IGNORECASE)
 
 class MigrationService:
     """Handles database schema migrations"""
@@ -55,32 +64,30 @@ class MigrationService:
     
     @classmethod
     def _validate_column_definition(cls, column_name: str, column_definition: str):
-        """Validate column definition with strict SQL injection protection"""
+        """Validate column definition with strict whitelist approach"""
         if not column_definition:
-            logger.warning(f"Migration security: Empty column definition rejected for column '{column_name}'")
+            logger.warning(f"Migration security: Empty column definition rejected")
             raise ValueError("column_definition is required")
         
-        # Block dangerous characters that enable SQL injection
-        if ';' in column_definition:
-            logger.warning(f"Migration security: Column definition rejected for '{column_name}' (contains semicolon): {column_definition!r}")
-            raise ValueError("Semicolons not allowed in column definition")
-        if '--' in column_definition:
-            logger.warning(f"Migration security: Column definition rejected for '{column_name}' (contains SQL comment): {column_definition!r}")
-            raise ValueError("SQL comments not allowed in column definition")
-        if '/*' in column_definition or '*/' in column_definition:
-            logger.warning(f"Migration security: Column definition rejected for '{column_name}' (contains block comment): {column_definition!r}")
-            raise ValueError("SQL block comments not allowed in column definition")
+        # Use whitelist pattern matching instead of blacklist
+        if not COLUMN_DEF_PATTERN.match(column_definition):
+            logger.warning(f"Migration security: Column definition rejected (invalid format)")
+            raise ValueError(f"Column definition must follow pattern: column_name TYPE [constraints]. Allowed types: {ALLOWED_TYPES}")
         
-        # Block dangerous SQL keywords
-        if DANGEROUS_KEYWORDS.search(column_definition):
-            logger.warning(f"Migration security: Column definition rejected for '{column_name}' (contains dangerous keywords): {column_definition!r}")
-            raise ValueError("Dangerous SQL keywords not allowed in column definition")
-        
-        # Ensure definition starts with the column name
+        # Ensure definition starts with the correct column name
         col_pattern = re.compile(r'^\s*[`"\[]?' + re.escape(column_name) + r'[`"\]]?\b', re.IGNORECASE)
         if not col_pattern.match(column_definition):
-            logger.warning(f"Migration security: Column definition rejected for '{column_name}' (wrong column name): {column_definition!r}")
-            raise ValueError(f"Column definition must start with column name '{column_name}'. Got: {column_definition!r}")
+            logger.warning(f"Migration security: Column definition rejected (wrong column name)")
+            raise ValueError(f"Column definition must start with column name '{column_name}'")
+        
+        # Additional safety: block any remaining dangerous patterns
+        if ';' in column_definition or '--' in column_definition or '/*' in column_definition:
+            logger.warning(f"Migration security: Column definition rejected (dangerous characters)")
+            raise ValueError("Dangerous characters not allowed in column definition")
+        
+        if DANGEROUS_KEYWORDS.search(column_definition):
+            logger.warning(f"Migration security: Column definition rejected (dangerous keywords)")
+            raise ValueError("Dangerous SQL keywords not allowed in column definition")
     
     @classmethod
     def initialize_migrations_table(cls):
@@ -152,10 +159,30 @@ class MigrationService:
         
         # Use quoted identifier for safety
         cursor.execute(f'PRAGMA table_info("{table_name}")')
-        columns = [column[1] for column in cursor.fetchall()]
+        columns = [column[1].lower() for column in cursor.fetchall()]
         conn.close()
         
-        return column_name in columns
+        return column_name.lower() in columns
+    
+    @classmethod
+    def _build_safe_column_definition(cls, column_name: str, data_type: str, constraints: str = None) -> str:
+        """Build safe column definition from validated components"""
+        if data_type.upper() not in ALLOWED_TYPES:
+            raise ValueError(f"Data type '{data_type}' not allowed. Allowed: {ALLOWED_TYPES}")
+        
+        # Build definition with quoted column name
+        definition = f'"{column_name}" {data_type.upper()}'
+        
+        if constraints:
+            # Validate constraints are safe
+            constraint_parts = constraints.upper().split()
+            for part in constraint_parts:
+                if part not in {'NOT', 'NULL', 'UNIQUE', 'PRIMARY', 'KEY', 'DEFAULT'} and not part.startswith('"'):
+                    if not re.match(r'^[A-Za-z0-9_"\'.\-]+$', part):
+                        raise ValueError(f"Unsafe constraint: {part}")
+            definition += f' {constraints}'
+        
+        return definition
     
     @classmethod
     def add_column_if_not_exists(cls, table_name: str, column_name: str, column_definition: str):
@@ -169,8 +196,9 @@ class MigrationService:
             cursor = conn.cursor()
             
             try:
-                # Use quoted identifiers for safety
-                cursor.execute(f'ALTER TABLE "{table_name}" ADD COLUMN {column_definition}')
+                # Use quoted identifiers for safety - column_definition is already validated
+                safe_sql = f'ALTER TABLE "{table_name}" ADD COLUMN {column_definition}'
+                cursor.execute(safe_sql)
                 conn.commit()
                 logger.info(f"Added column {column_name} to {table_name}")
             except Exception as e:
