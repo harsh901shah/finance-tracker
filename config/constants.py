@@ -2,6 +2,11 @@
 Centralized constants and enumerations for the application
 """
 
+class DatabaseConstants:
+    """Database configuration constants"""
+    DB_FILE = 'finance_tracker.db'
+    TEST_DB_PREFIX = 'test_'
+
 class TransactionTypes:
     INCOME = "Income"
     EXPENSE = "Expense" 

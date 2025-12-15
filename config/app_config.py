@@ -9,6 +9,7 @@ Notes:
 - BUDGET_COLORS: Configurable colors for budget status indicators
 - FEATURES: Toggle switches for optional functionality
 """
+from config.constants import PaymentMethods, TransactionTypes
 
 class AppConfig:
     """Centralized configuration for the application"""
@@ -20,37 +21,11 @@ class AppConfig:
         "Credit Card", "Savings", "Transfer", "Food", "Entertainment", "Other"
     ]
     
-    # Payment method constants - single source of truth
-    class PaymentMethods:
-        BANK_TRANSFER = "Bank Transfer"
-        CREDIT_CARD = "Credit Card"
-        CASH = "Cash"
-        CHECK = "Check"  # Keep original for backward compatibility
-        DIRECT_DEPOSIT = "Direct Deposit"
-        OTHER = "Other"  # Keep for backward compatibility
-        
-        # All valid payment methods
-        ALL = [BANK_TRANSFER, CREDIT_CARD, CASH, CHECK, DIRECT_DEPOSIT, OTHER]
-        
-        # Default dropdown options (preferred display)
-        DEFAULT = [BANK_TRANSFER, CREDIT_CARD, CASH, CHECK, DIRECT_DEPOSIT]
-        
-        # Backward compatibility mapping
-        LEGACY_MAPPING = {
-            "Cheque": CHECK,  # Map Cheque back to Check
-            "Debit Card": CREDIT_CARD,  # Map old Debit Card to Credit Card
-        }
-        
-        @classmethod
-        def normalize(cls, payment_method):
-            """Normalize payment method for consistent storage"""
-            return cls.LEGACY_MAPPING.get(payment_method, payment_method)
-    
     # Default payment methods - backward compatibility
     DEFAULT_PAYMENT_METHODS = PaymentMethods.DEFAULT
     
     # Transaction types
-    TRANSACTION_TYPES = ["Income", "Expense", "Investment", "Transfer"]
+    TRANSACTION_TYPES = TransactionTypes.ALL
     
     # Utility types with default amounts
     UTILITY_TYPES = {

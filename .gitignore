@@ -66,5 +66,8 @@ build/
 temp.pdf
 temp_*
 
+# Personal financial data
+migration_data.py
+
 # Log files
-logs/migration_data.py
+logs/

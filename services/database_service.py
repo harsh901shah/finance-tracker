@@ -4,6 +4,7 @@ import json
 import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+from config.constants import DatabaseConstants
 
 # Configure logging to file and stdout for diagnostics and auditing
 logging.basicConfig(
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 class DatabaseService:
     """Service for handling database operations"""
     
-    DB_FILE = 'finance_tracker.db'
+    DB_FILE = DatabaseConstants.DB_FILE
     
     @classmethod
     def get_connection(cls):

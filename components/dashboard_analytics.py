@@ -5,7 +5,9 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta, date
 from services.financial_data_service import TransactionService
-from utils.logger import AppLogger
+import logging
+
+logger = logging.getLogger(__name__)
 from utils.transaction_filter import TransactionFilter
 
 class DashboardAnalytics:
@@ -22,7 +24,7 @@ class DashboardAnalytics:
             filtered_transactions = TransactionFilter.get_filtered_transactions(date_filter, filters)
             return TransactionFilter.calculate_financial_summary(filtered_transactions)
         except Exception as e:
-            AppLogger.log_error("Error getting filtered financial data", e, show_user=False)
+            logger.exception("Error getting filtered financial data")
             return {'income': 0, 'expenses': 0}
     
     @staticmethod
@@ -32,7 +34,7 @@ class DashboardAnalytics:
             filtered_transactions = TransactionFilter.get_filtered_transactions(date_filter, filters)
             return TransactionFilter.calculate_analytics(filtered_transactions)
         except Exception as e:
-            AppLogger.log_error("Error getting additional analytics", e, show_user=False)
+            logger.exception("Error getting additional analytics")
             return {}
     
     @staticmethod
@@ -90,7 +92,7 @@ class DashboardAnalytics:
                 'has_previous_data': has_previous_data
             }
         except Exception as e:
-            AppLogger.log_error("Error calculating trends", e, show_user=False)
+            logger.exception("Error calculating trends")
             return {}
 
 class DashboardFilters:
@@ -215,6 +217,6 @@ class DashboardFilters:
                 
                 return (start_date, end_date)
         except (ValueError, IndexError) as e:
-            AppLogger.log_error(f"Error parsing date filter: {selected_period}", e, show_user=False)
+            logger.exception(f"Error parsing date filter: {selected_period}")
         
         return None
