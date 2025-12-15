@@ -374,6 +374,23 @@ class DatabaseService:
         
         return deleted_count
     
+    @classmethod
+    def delete_transactions_by_month(cls, month_prefix: str, user_id: str) -> int:
+        """Delete all transactions for a specific month (e.g., '2025-01')"""
+        conn = cls.get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('DELETE FROM transactions WHERE date LIKE ? AND user_id = ?', (f'{month_prefix}%', str(user_id)))
+            deleted_count = cursor.rowcount
+            conn.commit()
+            return deleted_count
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
+    
     # Asset methods
     @classmethod
     def add_asset(cls, asset: Dict[str, Any], user_id: str) -> int:
@@ -571,47 +588,76 @@ class DatabaseService:
         cursor = conn.cursor()
         
         try:
+            # Validate required fields
+            if not budget_item.get('category'):
+                logger.warning("Budget category is required")
+                return 0
+            if budget_item.get('amount') is None or budget_item.get('amount') < 0:
+                logger.warning(f"Invalid budget amount: {budget_item.get('amount')}")
+                return 0
+            if not budget_item.get('month') or not budget_item.get('year'):
+                logger.warning("Budget month and year are required")
+                return 0
+            
             # Add user_id column if it doesn't exist
             cursor.execute("PRAGMA table_info(budget)")
             columns = [column[1] for column in cursor.fetchall()]
             if 'user_id' not in columns:
                 cursor.execute('ALTER TABLE budget ADD COLUMN user_id TEXT')
-                # Update existing budget items to default user for migration
                 cursor.execute('UPDATE budget SET user_id = ? WHERE user_id IS NULL', ('default_user',))
                 conn.commit()
             
+            # Check if budget item already exists
             cursor.execute('''
-            INSERT INTO budget (category, amount, month, year, user_id)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(category, month, year, user_id) 
-            DO UPDATE SET amount = ?, updated_at = CURRENT_TIMESTAMP
+            SELECT id FROM budget 
+            WHERE category = ? AND month = ? AND year = ? AND user_id = ?
             ''', (
                 budget_item.get('category'),
-                budget_item.get('amount'),
                 budget_item.get('month'),
                 budget_item.get('year'),
-                str(user_id),
-                budget_item.get('amount')
+                str(user_id)
             ))
+            existing = cursor.fetchone()
             
-            budget_id = cursor.lastrowid
+            if existing:
+                # Update existing budget item
+                cursor.execute('''
+                UPDATE budget 
+                SET amount = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+                ''', (budget_item.get('amount'), existing[0]))
+                budget_id = existing[0]
+            else:
+                # Insert new budget item
+                cursor.execute('''
+                INSERT INTO budget (category, amount, month, year, user_id)
+                VALUES (?, ?, ?, ?, ?)
+                ''', (
+                    budget_item.get('category'),
+                    budget_item.get('amount'),
+                    budget_item.get('month'),
+                    budget_item.get('year'),
+                    str(user_id)
+                ))
+                budget_id = cursor.lastrowid
+            
             conn.commit()
+            return budget_id
+            
         except sqlite3.IntegrityError as e:
-            logger.warning(f"Budget constraint violation: {str(e)}")
+            logger.warning(f"Budget constraint violation for {budget_item.get('category', 'unknown')}: {str(e)}")
             conn.rollback()
-            budget_id = 0
+            return 0
         except sqlite3.OperationalError as e:
-            logger.error(f"Budget operation failed: {str(e)}")
+            logger.error(f"Budget operation failed for {budget_item.get('category', 'unknown')}: {str(e)}")
             conn.rollback()
-            budget_id = 0
+            return 0
         except Exception as e:
-            logger.error(f"Unexpected error adding budget: {str(e)}")
+            logger.error(f"Unexpected error adding budget for {budget_item.get('category', 'unknown')}: {str(e)}")
             conn.rollback()
-            budget_id = 0
+            return 0
         finally:
             conn.close()
-        
-        return budget_id
     
     @classmethod
     def get_budget(cls, month: Optional[str] = None, year: Optional[int] = None, user_id: str = None) -> List[Dict[str, Any]]:

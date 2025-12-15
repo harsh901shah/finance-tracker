@@ -22,7 +22,7 @@ class AppConfig:
     
     # Default payment methods - can be extended by user preferences
     DEFAULT_PAYMENT_METHODS = [
-        "Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"
+        "Bank Transfer", "Credit Card", "Cash", "Cheque", "Direct Deposit"
     ]
     
     # Transaction types

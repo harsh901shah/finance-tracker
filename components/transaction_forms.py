@@ -17,11 +17,21 @@ class TransactionFormHandler:
         """Render inline transaction form with validation and duplicate detection"""
         with st.container():
             st.markdown(f"**{description}**")
-            amount = st.number_input("Amount ($)", value=default_amount, step=0.01, key=f"{form_key}_amount")
+            if default_amount > 0:
+                amount = st.number_input("Amount ($)", value=default_amount, step=0.01, key=f"{form_key}_amount")
+            else:
+                amount = st.number_input("Amount ($)", min_value=0.01, step=0.01, key=f"{form_key}_amount")
             transaction_date = st.date_input("Date", value=date.today(), key=f"{form_key}_date")
-            payment_method = st.selectbox("Payment Method", [
-                default_payment_method, "Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit"
-            ], key=f"{form_key}_payment")
+            # Create payment method list without duplicates
+            payment_methods = ["Bank Transfer", "Credit Card", "Cash", "Cheque", "Direct Deposit"]
+            if default_payment_method not in payment_methods:
+                payment_methods.insert(0, default_payment_method)
+            else:
+                # Move default to front if it exists in the list
+                payment_methods.remove(default_payment_method)
+                payment_methods.insert(0, default_payment_method)
+            
+            payment_method = st.selectbox("Payment Method", payment_methods, key=f"{form_key}_payment")
             notes = st.text_input("Notes (optional)", placeholder="Add details here...", key=f"{form_key}_notes")
             
             col_cancel, col_add = st.columns(2)
@@ -32,8 +42,9 @@ class TransactionFormHandler:
             
             with col_add:
                 if st.button("Add", type="primary", key=f"{form_key}_add"):
+                    final_amount = amount
                     TransactionFormHandler._process_transaction(
-                        description, amount, transaction_date, transaction_type, 
+                        description, final_amount, transaction_date, transaction_type, 
                         category, payment_method, notes, form_key
                     )
     
@@ -41,7 +52,7 @@ class TransactionFormHandler:
     def _process_transaction(description, amount, transaction_date, transaction_type, category, payment_method, notes, form_key):
         """Process transaction with validation and duplicate detection"""
         # Input validation
-        if amount <= 0:
+        if amount is None or amount <= 0:
             st.error("Amount must be greater than zero")
             return
         elif not transaction_date:
@@ -161,11 +172,11 @@ class TransactionFormHandler:
             'show_car_loan_form', 'show_car_insurance_form', 'show_gas_form',
             'show_savings_transfer_form', 'show_robinhood_form', 'show_savings_withdraw_form',
             'show_gold_investment_form', 'show_money_india_form', 'show_401k_roth_form',
-            'cached_transaction_data'
+            'show_property_tax_form', 'cached_transaction_data'
         )
         
         for key in list(st.session_state.keys()):
-            if any(key.startswith(prefix) for prefix in form_prefixes):
+            if any(key.startswith(prefix) for prefix in form_prefixes) and 'property_tax' not in key:
                 del st.session_state[key]
 
 class UtilitiesFormHandler:
@@ -233,7 +244,7 @@ class UtilitiesFormHandler:
                 
                 amount = st.number_input("Amount ($)", value=default_amount, step=0.01, key=f"{form_key}_amount")
                 payment_method = st.selectbox("Payment Method", [
-                    "Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit"
+                    "Bank Transfer", "Credit Card", "Cash", "Cheque", "Direct Deposit"
                 ], key=f"{form_key}_payment")
                 notes = st.text_input("Notes (optional)", placeholder="Add details here...", key=f"{form_key}_notes")
                 
