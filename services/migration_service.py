@@ -3,10 +3,14 @@ Database migration service for schema changes
 """
 import sqlite3
 import logging
+import re
 from typing import List, Dict
 from config.constants import DatabaseConstants
 
 logger = logging.getLogger(__name__)
+
+# Allowed tables for migration operations (security whitelist)
+ALLOWED_MIGRATION_TABLES = {'transactions', 'budget', 'assets', 'liabilities', 'real_estate'}
 
 class MigrationService:
     """Handles database schema migrations"""
@@ -19,6 +23,22 @@ class MigrationService:
         conn = sqlite3.connect(cls.DB_FILE)
         conn.row_factory = sqlite3.Row
         return conn
+    
+    @classmethod
+    def _ensure_table_allowed(cls, table_name: str):
+        """Validate table name against whitelist"""
+        if not table_name:
+            raise ValueError("table_name is required")
+        if table_name.lower() not in ALLOWED_MIGRATION_TABLES:
+            raise ValueError(f"Table '{table_name}' not allowed. Allowed: {sorted(ALLOWED_MIGRATION_TABLES)}")
+    
+    @classmethod
+    def _validate_column_definition(cls, column_name: str, column_definition: str):
+        """Validate column definition format"""
+        # Allow for optional quotes and whitespace
+        col_pattern = re.compile(r'^\s*[`"\[]?' + re.escape(column_name) + r'[`"\]]?\b', re.IGNORECASE)
+        if not col_pattern.match(column_definition):
+            raise ValueError(f"Column definition must start with column name '{column_name}' (quotes allowed). Got: {column_definition!r}")
     
     @classmethod
     def initialize_migrations_table(cls):
@@ -82,11 +102,8 @@ class MigrationService:
     @classmethod
     def column_exists(cls, table_name: str, column_name: str) -> bool:
         """Check if column exists in table"""
-        # Whitelist table names for security
-        allowed_tables = {'transactions', 'budget', 'assets', 'liabilities', 'real_estate'}
-        if table_name not in allowed_tables:
-            raise ValueError(f"Table {table_name} not allowed")
-            
+        cls._ensure_table_allowed(table_name)
+        
         conn = cls.get_connection()
         cursor = conn.cursor()
         
@@ -99,15 +116,9 @@ class MigrationService:
     @classmethod
     def add_column_if_not_exists(cls, table_name: str, column_name: str, column_definition: str):
         """Add column only if it doesn't exist"""
-        # Whitelist table names for security
-        allowed_tables = {'transactions', 'budget', 'assets', 'liabilities', 'real_estate'}
-        if table_name not in allowed_tables:
-            raise ValueError(f"Table {table_name} not allowed")
-            
-        # Validate column definition format
-        if not column_definition.startswith(column_name):
-            raise ValueError(f"Column definition must start with column name {column_name}")
-            
+        cls._ensure_table_allowed(table_name)
+        cls._validate_column_definition(column_name, column_definition)
+        
         if not cls.column_exists(table_name, column_name):
             conn = cls.get_connection()
             cursor = conn.cursor()

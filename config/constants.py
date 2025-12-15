@@ -14,7 +14,7 @@ class TransactionTypes:
     TRANSFER = "Transfer"
     TAX = "Tax"
     
-    ALL = [INCOME, EXPENSE, INVESTMENT, TRANSFER]
+    ALL = [INCOME, EXPENSE, INVESTMENT, TRANSFER, TAX]
     DEFAULT_FILTER = [INCOME, EXPENSE]
 
 class Categories:
