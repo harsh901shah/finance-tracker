@@ -5,7 +5,11 @@ from datetime import datetime
 from services.financial_data_service import TransactionService
 from services.database_service import DatabaseService
 from services.tooltip_service import TooltipService
+from services.logger_service import LoggerService
 from utils.auth_middleware import AuthMiddleware
+
+
+logger = LoggerService.get_logger("transaction_page")
 
 class TransactionPage:
     """Transaction page for adding and viewing transactions"""
@@ -57,12 +61,12 @@ class TransactionPage:
         # Show contextual help
         TooltipService.show_contextual_help('view_transactions')
         
-        # Show undo options if available
+        # Resolve the current user once for consistent downstream use
         current_user = AuthMiddleware.get_current_user_id()
         if isinstance(current_user, dict) and 'user_id' in current_user:
             user_id = current_user['user_id']
         else:
-            user_id = current_user
+            user_id = current_user or "default_user"
         undo_snapshots = DatabaseService.get_undo_snapshots(user_id)
         if undo_snapshots:
             with st.expander("↩️ Undo Recent Actions", expanded=False):
@@ -82,34 +86,13 @@ class TransactionPage:
         # Clear cache to force fresh load
         TransactionService.clear_cache()
         transactions = TransactionService.load_transactions()
-        
-        # Debug: Show current user info (temporarily enabled)
-        current_user = AuthMiddleware.get_current_user_id()
-        st.write(f"Debug - Current user: {current_user}")
-        st.write(f"Debug - Loaded {len(transactions)} transactions")
-        if isinstance(current_user, dict) and 'user_id' in current_user:
-            st.write(f"Debug - User ID from dict: {current_user['user_id']} (type: {type(current_user['user_id'])})")
-        else:
-            st.write(f"Debug - User ID direct: {current_user} (type: {type(current_user)})")
-        
+
+        logger.info("Loaded %d transactions for user_id=%s", len(transactions), user_id)
+
         if not transactions:
             st.info("No transactions found. Add some transactions to see them here.")
             st.info("💡 Click 'Add Transaction' in the sidebar to get started!")
-            
-            # Debug info for troubleshooting (temporarily enabled)
-            current_user = AuthMiddleware.get_current_user_id()
-            st.write(f"Debug - Current user for transactions: {current_user}")
-            # Check if there are any transactions in the database at all
-            all_transactions = DatabaseService.get_transactions(None)
-            st.write(f"Debug - Total transactions in database: {len(all_transactions) if all_transactions else 0}")
-            # Check what user_ids exist in the database
-            import sqlite3
-            conn = sqlite3.connect('finance_tracker.db')
-            cursor = conn.cursor()
-            cursor.execute('SELECT DISTINCT user_id FROM transactions')
-            db_user_ids = cursor.fetchall()
-            conn.close()
-            st.write(f"Debug - User IDs in database: {db_user_ids}")
+            logger.info("No transactions found for user_id=%s", user_id)
             return
         
         # Convert transactions to DataFrame
