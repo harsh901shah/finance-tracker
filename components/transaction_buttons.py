@@ -104,16 +104,15 @@ class TransactionButtons:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                TransactionButtons._render_button_with_form("💳 DISCOVER DEBT", "discover_debt", 
-                    "Discover Credit Card Payment", 300.0, "Expense", "Credit Card", "Bank Transfer")
-            
-            with col2:
-                TransactionButtons._render_button_with_form("💳 Credit Card Payment", "credit_card_payment", 
+                TransactionButtons._render_button_with_form("💳 Credit Card", "credit_card_payment", 
                     "Credit Card Payment", 200.0, "Expense", "Credit Card", "Bank Transfer")
             
-            with col3:
+            with col2:
                 TransactionButtons._render_button_with_form("🏠 Extra Principal", "extra_principal", 
                     "Extra Principal Payment", 300.0, "Expense", "Housing", "Bank Transfer")
+            
+            with col3:
+                pass
     
     @staticmethod
     def render_investments_transfers_section():

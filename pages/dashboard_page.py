@@ -33,27 +33,38 @@ class DashboardPage:
         # Get transactions data (force refresh)
         transactions = cls._get_transactions_data()
         
-        # Load data by default, with filters if applied
-        if apply_filter:
-            current_month_data = cls._get_filtered_data(date_filter, filters)
-        else:
-            current_month_data = cls._get_filtered_data()
+        # Always use the date filter from selected period
+        effective_date_filter = date_filter
+        effective_filters = filters
+        
+        # If no date filter returned, use default January 2025
+        if not effective_date_filter:
+            from datetime import date
+            current_date = date(2025, 1, 1)
+            end_date = date(2025, 1, 31)
+            effective_date_filter = (current_date, end_date)
+        
+        # Ensure we have transaction types filter
+        if not effective_filters or not effective_filters.get('transaction_types'):
+            effective_filters = {'transaction_types': ['Income', 'Expense'], 'categories': [], 'payment_methods': []}
+        
+        # Load data with effective filters
+        current_month_data = cls._get_filtered_data(effective_date_filter, effective_filters)
         
         # Get trend data for comparison
-        trends = cls._calculate_trends(date_filter, filters) if apply_filter else {}
+        trends = cls._calculate_trends(effective_date_filter, effective_filters)
         
         # Get additional analytics
-        if apply_filter:
-            analytics = cls._get_additional_analytics(date_filter, filters) if AppConfig.FEATURES.get('advanced_analytics', True) else {}
-        else:
-            analytics = cls._get_additional_analytics() if AppConfig.FEATURES.get('advanced_analytics', True) else {}
+        analytics = cls._get_additional_analytics(effective_date_filter, effective_filters) if AppConfig.FEATURES.get('advanced_analytics', True) else {}
         
         # World-class KPI grid
         from components.dashboard_filters import render_kpi_grid
         
-        # Calculate all KPI values
+        # Calculate all KPI values using proper savings formula
+        # Your savings formula: (Taxes + Interest + 401K + HSA + Investments - Spending) / Total Income
+        savings_data = cls._calculate_proper_savings_rate(effective_date_filter, effective_filters)
         net_income = current_month_data['income'] - current_month_data['expenses']
-        savings_rate = (net_income / current_month_data['income'] * 100) if current_month_data['income'] > 0 else 0
+        savings_rate = savings_data['savings_rate']
         
         income_trend = trends.get('income_trend', 0)
         expense_trend = trends.get('expense_trend', 0)
@@ -101,7 +112,7 @@ class DashboardPage:
         st.markdown("<h2>Cash Flow</h2>", unsafe_allow_html=True)
         
         # Get real cash flow data with timeline view (6 months default)
-        cash_flow_data = cls._get_real_cash_flow_data(date_filter if apply_filter else None, months_to_show=6)
+        cash_flow_data = cls._get_real_cash_flow_data(effective_date_filter, months_to_show=6)
         
         # Create modern timeline cash flow chart
         fig = cls._create_cash_flow_chart(cash_flow_data, months_to_show=6)
@@ -111,12 +122,12 @@ class DashboardPage:
         # Two-column section with robust data handling
         col1, col2 = st.columns(2)
         
-        # Get and normalize transaction data with period filter
-        tx_data = cls._get_normalized_transactions(transactions, date_filter if apply_filter else None)
+        # Get and normalize transaction data with effective period filter
+        tx_data = cls._get_normalized_transactions(transactions, effective_date_filter)
         
         with col1:
             st.markdown("### Spending by Category")
-            st.caption("Current month breakdown")
+            st.caption("Selected month breakdown")
             
             if tx_data['total_spent'] <= 0:
                 st.info("No spending in the selected month.")
@@ -133,7 +144,7 @@ class DashboardPage:
             st.markdown("### Budget Progress")
             st.caption("Monthly budget tracking")
             
-            budget_data = cls._get_budget_progress(tx_data['spending_by_category'], date_filter if apply_filter else None)
+            budget_data = cls._get_budget_progress(tx_data['spending_by_category'], effective_date_filter)
             
             if not budget_data:
                 st.info("No budgets set or no spending this month.")
@@ -148,8 +159,8 @@ class DashboardPage:
         st.markdown("<div class='transactions-container'>", unsafe_allow_html=True)
         st.markdown("<h2>Recent Transactions</h2>", unsafe_allow_html=True)
         
-        # Get real recent transactions data with period filter
-        transactions_data = cls._get_real_recent_transactions(date_filter if apply_filter else None)
+        # Get real recent transactions data with effective period filter
+        transactions_data = cls._get_real_recent_transactions(effective_date_filter)
         
         # Display transactions table
         cls._display_transactions_table(transactions_data)
@@ -183,6 +194,99 @@ class DashboardPage:
             st.error(f"⚠️ **Data Loading Failed**\n\nUnable to load your financial data: {str(e)}")
             st.info("💡 **Try:** Refresh the page or contact support if the problem continues.")
             return []
+    
+    @staticmethod
+    def _calculate_proper_savings_rate(date_filter=None, filters=None):
+        """Calculate savings rate using exact spreadsheet formula: Total Monthly Saved / Monthly Salary * 100"""
+        try:
+            transactions = TransactionService.load_transactions()
+            
+            if date_filter:
+                start_date, end_date = date_filter
+                start_str = start_date.strftime('%Y-%m-%d')
+                end_str = end_date.strftime('%Y-%m-%d')
+            
+            # Initialize all components from your spreadsheet
+            monthly_salary = 0
+            taxes_paid = 0
+            interest_income = 0
+            pretax_401k = 0
+            roth_401k = 0
+            hsa = 0
+            total_monthly_spending = 0
+            saving_bank_transfer = 0
+            robinhood_investment = 0
+            extra_principal = 0
+            gold_investments = 0
+            
+            for transaction in transactions:
+                try:
+                    transaction_date = transaction.get('date', '')
+                    description = transaction.get('description', '').lower()
+                    transaction_type = transaction.get('type', '').lower()
+                    
+                    # Apply date filter
+                    if date_filter:
+                        if not (start_str <= transaction_date <= end_str):
+                            continue
+                    
+                    amount = float(transaction.get('amount', 0))
+                    
+                    # Categorize based on description (matching your spreadsheet columns)
+                    if 'monthly salary' in description:
+                        monthly_salary += abs(amount)
+                    elif 'taxes paid' in description:
+                        taxes_paid += abs(amount)
+                    elif 'interest income' in description:
+                        interest_income += abs(amount)
+                    elif '401k pretax' in description:
+                        pretax_401k += abs(amount)
+                    elif '401k roth' in description or 'roth contribution' in description:
+                        roth_401k += abs(amount)
+                    elif 'hsa' in description:
+                        hsa += abs(amount)
+                    elif 'saving bank transfer' in description:
+                        saving_bank_transfer += abs(amount)
+                    elif 'robinhood investment' in description:
+                        robinhood_investment += abs(amount)
+                    elif 'extra payment to principal' in description:
+                        extra_principal += abs(amount)
+                    elif 'gold investment' in description:
+                        gold_investments += abs(amount)
+                    elif transaction_type == 'expense':
+                        # Count all expenses as spending
+                        total_monthly_spending += abs(amount)
+                        
+                except (ValueError, TypeError):
+                    continue
+            
+            # Calculate Total Monthly Saved using your spreadsheet logic:
+            # Total Monthly Saved = Taxes + Interest + 401K Pretax + 401K Roth + HSA + Investments + Transfers + Extra Principal - Total Spending
+            total_monthly_saved = (
+                taxes_paid + 
+                interest_income + 
+                pretax_401k + 
+                roth_401k + 
+                hsa + 
+                robinhood_investment + 
+                gold_investments + 
+                saving_bank_transfer +
+                extra_principal -
+                total_monthly_spending
+            )
+            
+            # Calculate savings rate using your exact formula: Total Monthly Saved / Monthly Salary * 100
+            savings_rate = (total_monthly_saved / monthly_salary * 100) if monthly_salary > 0 else 0
+            
+            return {
+                'savings_rate': savings_rate,
+                'monthly_salary': monthly_salary,
+                'total_monthly_saved': total_monthly_saved
+            }
+            
+        except Exception as e:
+            print(f"Error calculating savings rate: {e}")
+            return {'savings_rate': 0, 'monthly_salary': 0, 'total_monthly_saved': 0}
     
     @staticmethod
     def _get_filtered_data(date_filter=None, filters=None):
@@ -230,10 +334,10 @@ class DashboardPage:
                     
                     transaction_type_lower = transaction_type.lower().strip()
                     
-                    # Include pre-tax and Roth contributions as income since they represent earned money
-                    if transaction_type_lower in ['income'] or (transaction_type_lower == 'transfer' and transaction_category.lower() in ['retirement', '401k', 'roth', 'pretax']):
+                    # Only count actual income, not investments or transfers
+                    if transaction_type_lower == 'income':
                         income += abs(amount)
-                    elif transaction_type_lower in ['expense']:
+                    elif transaction_type_lower == 'expense':
                         expenses += abs(amount)
                         
                 except (ValueError, TypeError) as e:

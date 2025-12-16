@@ -9,6 +9,7 @@ Notes:
 - BUDGET_COLORS: Configurable colors for budget status indicators
 - FEATURES: Toggle switches for optional functionality
 """
+from config.constants import PaymentMethods, TransactionTypes
 
 class AppConfig:
     """Centralized configuration for the application"""
@@ -20,13 +21,11 @@ class AppConfig:
         "Credit Card", "Savings", "Transfer", "Food", "Entertainment", "Other"
     ]
     
-    # Default payment methods - can be extended by user preferences
-    DEFAULT_PAYMENT_METHODS = [
-        "Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"
-    ]
+    # Default payment methods - backward compatibility
+    DEFAULT_PAYMENT_METHODS = PaymentMethods.DEFAULT
     
     # Transaction types
-    TRANSACTION_TYPES = ["Income", "Expense", "Investment", "Transfer"]
+    TRANSACTION_TYPES = TransactionTypes.ALL
     
     # Utility types with default amounts
     UTILITY_TYPES = {
