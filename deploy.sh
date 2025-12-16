@@ -1,22 +1,26 @@
 #!/bin/bash
+set -euo pipefail
 # Deployment script for Finance Tracker
 
 echo "🚀 Deploying Finance Tracker..."
 
 # Run tests first (gracefully skip if no test suite is available)
 echo "1. Running tests..."
-if [ -f "run_tests.py" ]; then
-    python3 run_tests.py
-    TEST_EXIT=$?
-elif command -v pytest >/dev/null 2>&1 && [ -d "tests" ]; then
-    pytest
-    TEST_EXIT=$?
+if command -v python3 >/dev/null 2>&1; then
+    if [ -f "run_tests.py" ]; then
+        python3 run_tests.py || TEST_EXIT=$?
+    elif command -v pytest >/dev/null 2>&1 && [ -d "tests" ]; then
+        pytest || TEST_EXIT=$?
+    else
+        echo "ℹ️ No automated tests detected. Skipping test step."
+        TEST_EXIT=0
+    fi
 else
-    echo "ℹ️ No automated tests detected. Skipping test step."
+    echo "⚠️ python3 is not available. Skipping tests."
     TEST_EXIT=0
 fi
 
-if [ $TEST_EXIT -ne 0 ]; then
+if [ "${TEST_EXIT:-0}" -ne 0 ]; then
     echo "❌ Tests failed. Deployment aborted."
     exit 1
 fi
