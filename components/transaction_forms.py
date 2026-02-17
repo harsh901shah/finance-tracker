@@ -68,8 +68,7 @@ class TransactionFormHandler:
         
         is_valid, errors = InputValidator.validate_transaction_data(transaction_data)
         if not is_valid:
-            for error in errors:
-                st.error(error)
+            st.session_state['flash_error'] = errors[0]
             return
         
         try:
@@ -77,7 +76,7 @@ class TransactionFormHandler:
             
             # Check for duplicates
             if TransactionFormHandler._check_duplicate(description, amount, date_str, category):
-                st.warning(f"⚠️ Similar {description} already exists for {date_str}")
+                st.session_state['flash_error'] = f"⚠️ Similar {description} already exists for {date_str}"
                 return
             
             # Create transaction
@@ -98,14 +97,18 @@ class TransactionFormHandler:
             # Auto-update net worth based on transaction
             TransactionFormHandler._update_networth_from_transaction(transaction, user_id)
             
-            st.success(f"✅ {description} added: ${amount:.2f}")
+            # Set flash message and close form
+            st.session_state['flash_success'] = f"✅ {description} added: ${amount:.2f}"
+            st.session_state[f"show_{form_key}_form"] = False
             
             # Clear session states
             TransactionFormHandler._clear_session_states()
             st.rerun()
             
         except Exception as e:
-            AppLogger.log_error("Failed to add transaction", e, show_user=True)
+            st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
+            AppLogger.log_error("Failed to add transaction", e, show_user=False)
+            st.rerun()
     
     @staticmethod
     def _check_duplicate(description, amount, date_str, category):
@@ -276,7 +279,7 @@ class UtilitiesFormHandler:
     def _process_utility_transaction(utility_type, amount, transaction_date, payment_method, notes, form_key):
         """Process utility transaction"""
         if amount <= 0:
-            st.error("Amount must be greater than zero")
+            st.session_state['flash_error'] = "Amount must be greater than zero"
             return
         
         try:
@@ -297,7 +300,9 @@ class UtilitiesFormHandler:
             # Auto-update net worth based on transaction
             TransactionFormHandler._update_networth_from_transaction(transaction, user_id)
             
-            st.success(f"✅ {utility_type} added: ${amount:.2f}")
+            # Set flash message and close form
+            st.session_state['flash_success'] = f"✅ {utility_type} added: ${amount:.2f}"
+            st.session_state[f"show_{form_key}_form"] = False
             
             # Clear session states
             TransactionFormHandler._clear_session_states()
@@ -305,4 +310,6 @@ class UtilitiesFormHandler:
             st.rerun()
             
         except Exception as e:
-            AppLogger.log_error("Failed to add utility bill", e, show_user=True)
+            st.session_state['flash_error'] = "❌ Failed to add utility bill. Please try again."
+            AppLogger.log_error("Failed to add utility bill", e, show_user=False)
+            st.rerun()

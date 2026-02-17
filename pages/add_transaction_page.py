@@ -9,6 +9,15 @@ from config.app_config import AppConfig
 class AddTransactionPage:
     @staticmethod
     def show():
+        # Display flash messages
+        if 'flash_success' in st.session_state:
+            st.success(st.session_state['flash_success'])
+            del st.session_state['flash_success']
+        
+        if 'flash_error' in st.session_state:
+            st.error(st.session_state['flash_error'])
+            del st.session_state['flash_error']
+        
         # Apply custom CSS for professional styling
         AddTransactionPage._apply_custom_css()
         
@@ -76,17 +85,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="interest_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Income',
-                                    'description': f"Interest Income" + (f" - {notes}" if notes else ""),
-                                    'category': 'Investment',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Interest Income added: ${amount:.2f}")
-                                st.session_state.show_interest_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Income',
+                                        'description': f"Interest Income" + (f" - {notes}" if notes else ""),
+                                        'category': 'Investment',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Interest Income added: ${amount:.2f}"
+                                    st.session_state.show_interest_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col2:
@@ -111,17 +123,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="espp_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Income',
-                                    'description': f"BOX STOCKS ESPP" + (f" - {notes}" if notes else ""),
-                                    'category': 'Investment',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ BOX STOCKS ESPP added: ${amount:.2f}")
-                                st.session_state.show_espp_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Income',
+                                        'description': f"BOX STOCKS ESPP" + (f" - {notes}" if notes else ""),
+                                        'category': 'Investment',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ BOX STOCKS ESPP added: ${amount:.2f}"
+                                    st.session_state.show_espp_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
                 if st.button("💸 Tax Refund", use_container_width=True, key="tax_refund_btn"):
                     st.session_state.show_tax_refund_form = not st.session_state.get('show_tax_refund_form', False)
@@ -144,17 +159,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="tax_refund_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Income',
-                                    'description': f"Tax Refund" + (f" - {notes}" if notes else ""),
-                                    'category': 'Tax',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Tax Refund added: ${amount:.2f}")
-                                st.session_state.show_tax_refund_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Income',
+                                        'description': f"Tax Refund" + (f" - {notes}" if notes else ""),
+                                        'category': 'Tax',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Tax Refund added: ${amount:.2f}"
+                                    st.session_state.show_tax_refund_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col3:
@@ -179,17 +197,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="rsu_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Income',
-                                    'description': f"BOX RSU" + (f" - {notes}" if notes else ""),
-                                    'category': 'Investment',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ BOX RSU added: ${amount:.2f}")
-                                st.session_state.show_rsu_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Income',
+                                        'description': f"BOX RSU" + (f" - {notes}" if notes else ""),
+                                        'category': 'Investment',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ BOX RSU added: ${amount:.2f}"
+                                    st.session_state.show_rsu_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
                 
                 if st.button("💹 BOX ESPP PROFIT", use_container_width=True, key="espp_profit_btn"):
@@ -213,17 +234,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="espp_profit_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Income',
-                                    'description': f"BOX ESPP PROFIT" + (f" - {notes}" if notes else ""),
-                                    'category': 'Investment',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ BOX ESPP PROFIT added: ${amount:.2f}")
-                                st.session_state.show_espp_profit_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Income',
+                                        'description': f"BOX ESPP PROFIT" + (f" - {notes}" if notes else ""),
+                                        'category': 'Investment',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ BOX ESPP PROFIT added: ${amount:.2f}"
+                                    st.session_state.show_espp_profit_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
         
         # Taxes & Payroll section
@@ -252,17 +276,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="taxes_paid_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Tax',
-                                    'description': f"TAXES PAID" + (f" - {notes}" if notes else ""),
-                                    'category': 'Tax',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ TAXES PAID added: ${amount:.2f}")
-                                st.session_state.show_taxes_paid_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Tax',
+                                        'description': f"TAXES PAID" + (f" - {notes}" if notes else ""),
+                                        'category': 'Tax',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ TAXES PAID added: ${amount:.2f}"
+                                    st.session_state.show_taxes_paid_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col2:
@@ -306,17 +333,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="hoa_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Expense',
-                                    'description': f"HOA Fee" + (f" - {notes}" if notes else ""),
-                                    'category': 'Housing',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ HOA Fee added: ${amount:.2f}")
-                                st.session_state.show_hoa_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Expense',
+                                        'description': f"HOA Fee" + (f" - {notes}" if notes else ""),
+                                        'category': 'Housing',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ HOA Fee added: ${amount:.2f}"
+                                    st.session_state.show_hoa_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col2:
@@ -350,17 +380,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="furniture_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Expense',
-                                    'description': f"Furniture Purchase" + (f" - {notes}" if notes else ""),
-                                    'category': 'Shopping',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Furniture Purchase added: ${amount:.2f}")
-                                st.session_state.show_furniture_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Expense',
+                                        'description': f"Furniture Purchase" + (f" - {notes}" if notes else ""),
+                                        'category': 'Shopping',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Furniture Purchase added: ${amount:.2f}"
+                                    st.session_state.show_furniture_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col3:
@@ -392,17 +425,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="jewelry_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Expense',
-                                    'description': f"Jewelry Purchase" + (f" - {notes}" if notes else ""),
-                                    'category': 'Shopping',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Jewelry Purchase added: ${amount:.2f}")
-                                st.session_state.show_jewelry_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Expense',
+                                        'description': f"Jewelry Purchase" + (f" - {notes}" if notes else ""),
+                                        'category': 'Shopping',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Jewelry Purchase added: ${amount:.2f}"
+                                    st.session_state.show_jewelry_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
         
         # Transportation expenses
@@ -458,17 +494,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="car_insurance_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Expense',
-                                    'description': f"Car Insurance" + (f" - {notes}" if notes else ""),
-                                    'category': 'Transportation',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Car Insurance added: ${amount:.2f}")
-                                st.session_state.show_car_insurance_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Expense',
+                                        'description': f"Car Insurance" + (f" - {notes}" if notes else ""),
+                                        'category': 'Transportation',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Car Insurance added: ${amount:.2f}"
+                                    st.session_state.show_car_insurance_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col3:
@@ -493,17 +532,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="gas_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Expense',
-                                    'description': f"Gas Fill-up" + (f" - {notes}" if notes else ""),
-                                    'category': 'Transportation',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Gas Fill-up added: ${amount:.2f}")
-                                st.session_state.show_gas_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Expense',
+                                        'description': f"Gas Fill-up" + (f" - {notes}" if notes else ""),
+                                        'category': 'Transportation',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Gas Fill-up added: ${amount:.2f}"
+                                    st.session_state.show_gas_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
         
 
@@ -534,17 +576,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="401k_pretax_retirement_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Income',
-                                    'description': f"401K Pretax" + (f" - {notes}" if notes else ""),
-                                    'category': 'Retirement',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ 401K Pretax added: ${amount:.2f}")
-                                st.session_state.show_401k_pretax_retirement_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Income',
+                                        'description': f"401K Pretax" + (f" - {notes}" if notes else ""),
+                                        'category': 'Retirement',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ 401K Pretax added: ${amount:.2f}"
+                                    st.session_state.show_401k_pretax_retirement_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col2:
@@ -569,17 +614,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="401k_roth_retirement_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Investment',
-                                    'description': f"401k Roth Contribution" + (f" - {notes}" if notes else ""),
-                                    'category': 'Retirement',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ 401k Roth Contribution added: ${amount:.2f}")
-                                st.session_state.show_401k_roth_retirement_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Investment',
+                                        'description': f"401k Roth Contribution" + (f" - {notes}" if notes else ""),
+                                        'category': 'Retirement',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ 401k Roth Contribution added: ${amount:.2f}"
+                                    st.session_state.show_401k_roth_retirement_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col3:
@@ -604,17 +652,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="hsa_retirement_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Income',
-                                    'description': f"HSA" + (f" - {notes}" if notes else ""),
-                                    'category': 'Healthcare',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ HSA added: ${amount:.2f}")
-                                st.session_state.show_hsa_retirement_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Income',
+                                        'description': f"HSA" + (f" - {notes}" if notes else ""),
+                                        'category': 'Healthcare',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ HSA added: ${amount:.2f}"
+                                    st.session_state.show_hsa_retirement_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
         
         # Debt & Credit section
@@ -643,17 +694,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="credit_card_payment_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Expense',
-                                    'description': f"Credit Card Payment" + (f" - {notes}" if notes else ""),
-                                    'category': 'Credit Card',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Credit Card Payment added: ${amount:.2f}")
-                                st.session_state.show_credit_card_payment_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Expense',
+                                        'description': f"Credit Card Payment" + (f" - {notes}" if notes else ""),
+                                        'category': 'Credit Card',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Credit Card Payment added: ${amount:.2f}"
+                                    st.session_state.show_credit_card_payment_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col2:
@@ -678,17 +732,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="extra_principal_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Expense',
-                                    'description': f"Extra Principal Payment" + (f" - {notes}" if notes else ""),
-                                    'category': 'Housing',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Extra Principal Payment added: ${amount:.2f}")
-                                st.session_state.show_extra_principal_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Expense',
+                                        'description': f"Extra Principal Payment" + (f" - {notes}" if notes else ""),
+                                        'category': 'Housing',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Extra Principal Payment added: ${amount:.2f}"
+                                    st.session_state.show_extra_principal_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col3:
@@ -720,17 +777,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="savings_transfer_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Transfer',
-                                    'description': f"Savings Bank Transfer" + (f" - {notes}" if notes else ""),
-                                    'category': 'Savings',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Savings Bank Transfer added: ${amount:.2f}")
-                                st.session_state.show_savings_transfer_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Transfer',
+                                        'description': f"Savings Bank Transfer" + (f" - {notes}" if notes else ""),
+                                        'category': 'Savings',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Savings Bank Transfer added: ${amount:.2f}"
+                                    st.session_state.show_savings_transfer_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
                 
                 if st.button("📈 ROBINHOOD", use_container_width=True, key="robinhood_btn"):
@@ -754,17 +814,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="robinhood_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Investment',
-                                    'description': f"Robinhood Investment" + (f" - {notes}" if notes else ""),
-                                    'category': 'Investment',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Robinhood Investment added: ${amount:.2f}")
-                                st.session_state.show_robinhood_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Investment',
+                                        'description': f"Robinhood Investment" + (f" - {notes}" if notes else ""),
+                                        'category': 'Investment',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Robinhood Investment added: ${amount:.2f}"
+                                    st.session_state.show_robinhood_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col2:
@@ -789,17 +852,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="savings_withdraw_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Transfer',
-                                    'description': f"Savings Bank Withdraw" + (f" - {notes}" if notes else ""),
-                                    'category': 'Savings',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Savings Bank Withdraw added: ${amount:.2f}")
-                                st.session_state.show_savings_withdraw_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Transfer',
+                                        'description': f"Savings Bank Withdraw" + (f" - {notes}" if notes else ""),
+                                        'category': 'Savings',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Savings Bank Withdraw added: ${amount:.2f}"
+                                    st.session_state.show_savings_withdraw_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
                 
                 if st.button("🥇 GOLD Investment", use_container_width=True, key="gold_investment_btn"):
@@ -823,17 +889,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="gold_investment_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Investment',
-                                    'description': f"Gold Investment" + (f" - {notes}" if notes else ""),
-                                    'category': 'Investment',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Gold Investment added: ${amount:.2f}")
-                                st.session_state.show_gold_investment_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Investment',
+                                        'description': f"Gold Investment" + (f" - {notes}" if notes else ""),
+                                        'category': 'Investment',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Gold Investment added: ${amount:.2f}"
+                                    st.session_state.show_gold_investment_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
             
             with col3:
@@ -858,17 +927,20 @@ class AddTransactionPage:
                                 st.rerun()
                         with col_add:
                             if st.button("Add", type="primary", key="money_india_add"):
-                                transaction = {
-                                    'date': transaction_date.strftime('%Y-%m-%d'),
-                                    'amount': float(amount),
-                                    'type': 'Transfer',
-                                    'description': f"Money Sent India" + (f" - {notes}" if notes else ""),
-                                    'category': 'Transfer',
-                                    'payment_method': payment_method
-                                }
-                                from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                                st.success(f"✅ Money Sent India added: ${amount:.2f}")
-                                st.session_state.show_money_india_form = False
+                                try:
+                                    transaction = {
+                                        'date': transaction_date.strftime('%Y-%m-%d'),
+                                        'amount': float(amount),
+                                        'type': 'Transfer',
+                                        'description': f"Money Sent India" + (f" - {notes}" if notes else ""),
+                                        'category': 'Transfer',
+                                        'payment_method': payment_method
+                                    }
+                                    from utils.auth_middleware import AuthMiddleware; current_user = AuthMiddleware.get_current_user_id(); user_id = str(current_user.get("user_id") if isinstance(current_user, dict) else current_user or "default_user"); transaction_id = DatabaseService.add_transaction(transaction, user_id)
+                                    st.session_state['flash_success'] = f"✅ Money Sent India added: ${amount:.2f}"
+                                    st.session_state.show_money_india_form = False
+                                except:
+                                    st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
                 st.write("")
         
@@ -902,11 +974,14 @@ class AddTransactionPage:
             if st.form_submit_button("Add Transaction", type="primary", use_container_width=True):
                 # Input validation
                 if not description.strip():
-                    st.error("Description is required")
+                    st.session_state['flash_error'] = "Description is required"
+                    st.rerun()
                 elif amount <= 0:
-                    st.error("Amount must be greater than zero")
+                    st.session_state['flash_error'] = "Amount must be greater than zero"
+                    st.rerun()
                 elif not transaction_date:
-                    st.error("Date is required")
+                    st.session_state['flash_error'] = "Date is required"
+                    st.rerun()
                 else:
                     try:
                         transaction = {
@@ -921,11 +996,11 @@ class AddTransactionPage:
                         # Get current user ID - require authentication
                         current_user = AuthMiddleware.get_current_user_id()
                         if not current_user:
-                            st.error("🔒 Please login to add transactions")
-                            return
+                            st.session_state['flash_error'] = "🔒 Please login to add transactions"
+                            st.rerun()
                         user_id = str(current_user.get('user_id') if isinstance(current_user, dict) else current_user or 'default_user')
                         transaction_id = DatabaseService.add_transaction(transaction, user_id)
-                        st.success(f"✅ Transaction added successfully!")
+                        st.session_state['flash_success'] = "✅ Transaction added successfully!"
                         
                         # Clear all session states
                         for key in list(st.session_state.keys()):
@@ -934,8 +1009,9 @@ class AddTransactionPage:
                         
                         st.rerun()
                     except Exception as e:
-                        st.error("Failed to add transaction. Please try again.")
+                        st.session_state['flash_error'] = "Failed to add transaction. Please try again."
                         print(f"Manual transaction error: {str(e)}")  # Log for debugging
+                        st.rerun()
         
 
         
