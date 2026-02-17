@@ -5,11 +5,7 @@ from datetime import datetime
 from services.financial_data_service import TransactionService
 from services.database_service import DatabaseService
 from services.tooltip_service import TooltipService
-from services.logger_service import LoggerService
 from utils.auth_middleware import AuthMiddleware
-
-
-logger = LoggerService.get_logger("transaction_page")
 
 class TransactionPage:
     """Transaction page for adding and viewing transactions"""
@@ -61,17 +57,12 @@ class TransactionPage:
         # Show contextual help
         TooltipService.show_contextual_help('view_transactions')
         
-        # Resolve the current user once for consistent downstream use
+        # Show undo options if available
         current_user = AuthMiddleware.get_current_user_id()
         if isinstance(current_user, dict) and 'user_id' in current_user:
             user_id = current_user['user_id']
         else:
             user_id = current_user
-
-        if not user_id:
-            logger.warning("No authenticated user; transaction history is unavailable")
-            st.error("🔒 Please sign in to view your transactions.")
-            return
         undo_snapshots = DatabaseService.get_undo_snapshots(user_id)
         if undo_snapshots:
             with st.expander("↩️ Undo Recent Actions", expanded=False):
@@ -91,15 +82,14 @@ class TransactionPage:
         # Clear cache to force fresh load
         TransactionService.clear_cache()
         transactions = TransactionService.load_transactions()
+        
 
-        if transactions:
-            logger.info("Loaded %d transactions for user_id=%s", len(transactions), user_id)
-        else:
-            logger.info("No transactions returned for user_id=%s", user_id)
-
+        
         if not transactions:
             st.info("No transactions found. Add some transactions to see them here.")
             st.info("💡 Click 'Add Transaction' in the sidebar to get started!")
+            
+
             return
         
         # Convert transactions to DataFrame
@@ -273,7 +263,6 @@ class TransactionPage:
                 with col3:
                     # Delete button for individual transaction
                     if st.button("🗑️", key=f"delete_{row['id']}", help="Delete this transaction"):
-                        st.write(f"Debug - Deleting transaction {row['id']} with user_id: {user_id} (type: {type(user_id)})")
                         if TransactionPage._delete_single_transaction(row['id'], user_id, dict(row)):
                             st.success("Transaction deleted! Check undo options above to restore.")
                             st.rerun()

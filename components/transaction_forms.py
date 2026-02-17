@@ -17,11 +17,26 @@ class TransactionFormHandler:
         """Render inline transaction form with validation and duplicate detection"""
         with st.container():
             st.markdown(f"**{description}**")
-            amount = st.number_input("Amount ($)", value=default_amount, step=0.01, key=f"{form_key}_amount")
+            if default_amount > 0:
+                amount = st.number_input("Amount ($)", value=default_amount, step=0.01, key=f"{form_key}_amount")
+            else:
+                amount = st.number_input("Amount ($)", min_value=0.01, step=0.01, key=f"{form_key}_amount")
             transaction_date = st.date_input("Date", value=date.today(), key=f"{form_key}_date")
-            payment_method = st.selectbox("Payment Method", [
-                default_payment_method, "Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit"
-            ], key=f"{form_key}_payment")
+            # Create payment method list using constants
+            from config.constants import PaymentMethods
+            payment_methods = PaymentMethods.DEFAULT.copy()
+            
+            # Normalize default payment method
+            normalized_default = PaymentMethods.normalize(default_payment_method)
+            
+            if normalized_default not in payment_methods:
+                payment_methods.insert(0, normalized_default)
+            else:
+                # Move default to front if it exists in the list
+                payment_methods.remove(normalized_default)
+                payment_methods.insert(0, normalized_default)
+            
+            payment_method = st.selectbox("Payment Method", payment_methods, key=f"{form_key}_payment")
             notes = st.text_input("Notes (optional)", placeholder="Add details here...", key=f"{form_key}_notes")
             
             col_cancel, col_add = st.columns(2)
@@ -32,20 +47,28 @@ class TransactionFormHandler:
             
             with col_add:
                 if st.button("Add", type="primary", key=f"{form_key}_add"):
+                    final_amount = amount
                     TransactionFormHandler._process_transaction(
-                        description, amount, transaction_date, transaction_type, 
+                        description, final_amount, transaction_date, transaction_type, 
                         category, payment_method, notes, form_key
                     )
     
     @staticmethod
     def _process_transaction(description, amount, transaction_date, transaction_type, category, payment_method, notes, form_key):
         """Process transaction with validation and duplicate detection"""
-        # Input validation
-        if amount <= 0:
-            st.error("Amount must be greater than zero")
-            return
-        elif not transaction_date:
-            st.error("Date is required")
+        from utils.validation import InputValidator
+        
+        # Comprehensive validation
+        transaction_data = {
+            'amount': amount,
+            'description': description,
+            'date': transaction_date,
+            'type': transaction_type
+        }
+        
+        is_valid, errors = InputValidator.validate_transaction_data(transaction_data)
+        if not is_valid:
+            st.session_state['flash_error'] = errors[0]
             return
         
         try:
@@ -53,7 +76,7 @@ class TransactionFormHandler:
             
             # Check for duplicates
             if TransactionFormHandler._check_duplicate(description, amount, date_str, category):
-                st.warning(f"⚠️ Similar {description} already exists for {date_str}")
+                st.session_state['flash_error'] = f"⚠️ Similar {description} already exists for {date_str}"
                 return
             
             # Create transaction
@@ -74,14 +97,18 @@ class TransactionFormHandler:
             # Auto-update net worth based on transaction
             TransactionFormHandler._update_networth_from_transaction(transaction, user_id)
             
-            st.success(f"✅ {description} added: ${amount:.2f}")
+            # Set flash message and close form
+            st.session_state['flash_success'] = f"✅ {description} added: ${amount:.2f}"
+            st.session_state[f"show_{form_key}_form"] = False
             
             # Clear session states
             TransactionFormHandler._clear_session_states()
             st.rerun()
             
         except Exception as e:
-            AppLogger.log_error("Failed to add transaction", e, show_user=True)
+            st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
+            AppLogger.log_error("Failed to add transaction", e, show_user=False)
+            st.rerun()
     
     @staticmethod
     def _check_duplicate(description, amount, date_str, category):
@@ -151,7 +178,7 @@ class TransactionFormHandler:
                             DatabaseService.update_asset(asset['id'], new_value, transaction.get('date'))
             
         except Exception as e:
-            print(f"Warning: Could not update net worth: {e}")
+            logger.warning(f"Could not update net worth: {e}")
     
     @staticmethod
     def _clear_session_states():
@@ -161,11 +188,11 @@ class TransactionFormHandler:
             'show_car_loan_form', 'show_car_insurance_form', 'show_gas_form',
             'show_savings_transfer_form', 'show_robinhood_form', 'show_savings_withdraw_form',
             'show_gold_investment_form', 'show_money_india_form', 'show_401k_roth_form',
-            'cached_transaction_data'
+            'show_property_tax_form', 'cached_transaction_data'
         )
         
         for key in list(st.session_state.keys()):
-            if any(key.startswith(prefix) for prefix in form_prefixes):
+            if any(key.startswith(prefix) for prefix in form_prefixes) and 'property_tax' not in key:
                 del st.session_state[key]
 
 class UtilitiesFormHandler:
@@ -232,9 +259,8 @@ class UtilitiesFormHandler:
                 default_amount = AppConfig.UTILITY_TYPES.get(utility_type, 100.0)
                 
                 amount = st.number_input("Amount ($)", value=default_amount, step=0.01, key=f"{form_key}_amount")
-                payment_method = st.selectbox("Payment Method", [
-                    "Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit"
-                ], key=f"{form_key}_payment")
+                payment_method = st.selectbox("Payment Method", 
+                    AppConfig.PaymentMethods.DEFAULT, key=f"{form_key}_payment")
                 notes = st.text_input("Notes (optional)", placeholder="Add details here...", key=f"{form_key}_notes")
                 
                 col_cancel, col_add = st.columns(2)
@@ -253,7 +279,7 @@ class UtilitiesFormHandler:
     def _process_utility_transaction(utility_type, amount, transaction_date, payment_method, notes, form_key):
         """Process utility transaction"""
         if amount <= 0:
-            st.error("Amount must be greater than zero")
+            st.session_state['flash_error'] = "Amount must be greater than zero"
             return
         
         try:
@@ -274,7 +300,9 @@ class UtilitiesFormHandler:
             # Auto-update net worth based on transaction
             TransactionFormHandler._update_networth_from_transaction(transaction, user_id)
             
-            st.success(f"✅ {utility_type} added: ${amount:.2f}")
+            # Set flash message and close form
+            st.session_state['flash_success'] = f"✅ {utility_type} added: ${amount:.2f}"
+            st.session_state[f"show_{form_key}_form"] = False
             
             # Clear session states
             TransactionFormHandler._clear_session_states()
@@ -282,4 +310,6 @@ class UtilitiesFormHandler:
             st.rerun()
             
         except Exception as e:
-            AppLogger.log_error("Failed to add utility bill", e, show_user=True)
+            st.session_state['flash_error'] = "❌ Failed to add utility bill. Please try again."
+            AppLogger.log_error("Failed to add utility bill", e, show_user=False)
+            st.rerun()

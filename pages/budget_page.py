@@ -167,7 +167,7 @@ class BudgetPage:
                                 'year': selected_year
                             })
                         
-                        # Save each budget item with error handling
+                        # Save each budget item with detailed error handling
                         from services.database_service import DatabaseService
                         from utils.auth_middleware import AuthMiddleware
                         
@@ -175,21 +175,33 @@ class BudgetPage:
                         user_id = current_user['user_id'] if isinstance(current_user, dict) else current_user
                         
                         success_count = 0
+                        failed_categories = []
+                        
                         for item in budget_items:
-                            if DatabaseService.add_budget(item, user_id):
+                            result = DatabaseService.add_budget(item, user_id)
+                            if result and result > 0:
                                 success_count += 1
+                            else:
+                                failed_categories.append(item['category'])
                         
                         if success_count == len(budget_items):
                             st.success("✅ Budget saved successfully!")
                             st.rerun()
                         elif success_count > 0:
                             st.warning(f"⚠️ Partially saved: {success_count}/{len(budget_items)} categories")
+                            if failed_categories:
+                                st.info(f"Failed categories: {', '.join(failed_categories)}")
                         else:
                             st.error("❌ Failed to save budget. Please try again.")
+                            if failed_categories:
+                                st.info(f"Failed categories: {', '.join(failed_categories)}")
                     
                     except Exception as e:
                         st.error(f"❌ **Budget Save Error**\n\nFailed to save budget: {str(e)}")
-                        st.info("💡 **Try:** Check your internet connection and try again.")
+                        st.info("💡 **Try:** Refresh the page and try again. If the issue persists, some categories may already exist for this month.")
+                        # Show current budget data for debugging
+                        st.info(f"Current period: {month_options[selected_period][0]} (Month: {selected_month}, Year: {selected_year})")
+                        st.info(f"User ID: {user_id}")
             
             st.markdown('</div>', unsafe_allow_html=True)
         
