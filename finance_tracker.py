@@ -16,6 +16,8 @@ from pages.dashboard_page import DashboardPage
 from pages.networth_page import NetWorthPage
 from pages.transaction_page import TransactionPage
 from pages.add_transaction_page import AddTransactionPage
+from pages.add_transaction_page_v2 import AddTransactionPageV2
+from pages.template_manager_page import TemplateManagerPage
 from pages.budget_page import BudgetPage
 from pages.login_page import LoginPage
 from services.database_service import DatabaseService
@@ -62,7 +64,8 @@ class FinanceApp:
             "Dashboard": DashboardPage,
             "Net Worth": NetWorthPage,
             "View Transactions": TransactionPage.show_list,
-            "Add Transaction": AddTransactionPage,
+            "Add Transaction": AddTransactionPageV2,
+            "Manage Templates": TemplateManagerPage,
             "Budget": BudgetPage
         }
     
@@ -155,26 +158,30 @@ class FinanceApp:
                     
                     # Overview section - Main dashboard and financial summary pages
                     st.markdown('<div class="nav-section"><div class="nav-label">OVERVIEW</div></div>', unsafe_allow_html=True)
-                    if st.sidebar.button("Dashboard", key="nav_Dashboard", use_container_width=True, type="primary" if current_page == "Dashboard" else "secondary"):
+                    if st.sidebar.button("Dashboard", key="nav_Dashboard", width="stretch", type="primary" if current_page == "Dashboard" else "secondary"):
                         selected_page = "Dashboard"
                         st.session_state.ft_current_page = "Dashboard"
                         st.rerun()  # Force page refresh to update active button styling
-                    if st.sidebar.button("Net Worth", key="nav_Net_Worth", use_container_width=True, type="primary" if current_page == "Net Worth" else "secondary"):
+                    if st.sidebar.button("Net Worth", key="nav_Net_Worth", width="stretch", type="primary" if current_page == "Net Worth" else "secondary"):
                         selected_page = "Net Worth"
                         st.session_state.ft_current_page = "Net Worth"
                         st.rerun()
                     
                     # Transactions section - Core transaction management functionality
                     st.markdown('<div class="nav-section"><div class="nav-label">TRANSACTIONS</div></div>', unsafe_allow_html=True)
-                    if st.sidebar.button("View Transactions", key="nav_View_Transactions", use_container_width=True, type="primary" if current_page == "View Transactions" else "secondary"):
+                    if st.sidebar.button("View Transactions", key="nav_View_Transactions", width="stretch", type="primary" if current_page == "View Transactions" else "secondary"):
                         selected_page = "View Transactions"
                         st.session_state.ft_current_page = "View Transactions"
                         st.rerun()
-                    if st.sidebar.button("Add Transaction", key="nav_Add_Transaction", use_container_width=True, type="primary" if current_page == "Add Transaction" else "secondary"):
+                    if st.sidebar.button("Add Transaction", key="nav_Add_Transaction", width="stretch", type="primary" if current_page == "Add Transaction" else "secondary"):
                         selected_page = "Add Transaction"
                         st.session_state.ft_current_page = "Add Transaction"
                         st.rerun()
-                    if st.sidebar.button("Budget", key="nav_Budget", use_container_width=True, type="primary" if current_page == "Budget" else "secondary"):
+                    if st.sidebar.button("Manage Templates", key="nav_Manage_Templates", width="stretch", type="primary" if current_page == "Manage Templates" else "secondary"):
+                        selected_page = "Manage Templates"
+                        st.session_state.ft_current_page = "Manage Templates"
+                        st.rerun()
+                    if st.sidebar.button("Budget", key="nav_Budget", width="stretch", type="primary" if current_page == "Budget" else "secondary"):
                         selected_page = "Budget"
                         st.session_state.ft_current_page = "Budget"
                         st.rerun()
@@ -203,7 +210,7 @@ class FinanceApp:
                     
                     # Logout button
                     st.markdown('<div class="logout-section"></div>', unsafe_allow_html=True)
-                    if st.sidebar.button("Logout", key="logout_button", use_container_width=True, type="secondary"):
+                    if st.sidebar.button("Logout", key="logout_button", width="stretch", type="secondary"):
                         # Clear all cached data on logout
                         try:
                             from services.financial_data_service import TransactionService
@@ -402,45 +409,76 @@ class FinanceApp:
             margin-bottom: 0.5rem;
         }
         
-        /* Button styling */
+        /* Button styling - Remove ALL focus/active states */
         section[data-testid="stSidebar"] button {
-            width: calc(100% - 1.5rem);
-            margin: 0.125rem 0.75rem;
-            padding: 0.875rem 1.25rem;
-            border-radius: 0.5rem;
-            border: none;
-            font-weight: 500;
-            font-size: 0.875rem;
-            transition: all 0.15s ease;
-            text-align: left;
-            height: 44px;
-            display: flex;
-            align-items: center;
+            width: calc(100% - 1.5rem) !important;
+            margin: 0.125rem 0.75rem !important;
+            padding: 0.875rem 1.25rem !important;
+            border-radius: 0.5rem !important;
+            border: none !important;
+            font-weight: 500 !important;
+            font-size: 0.875rem !important;
+            transition: all 0.15s ease !important;
+            text-align: left !important;
+            height: 44px !important;
+            display: flex !important;
+            align-items: center !important;
+            outline: none !important;
+            box-shadow: none !important;
         }
         
-        /* Force button text colors */
+        /* Remove focus/active states */
+        section[data-testid="stSidebar"] button:focus,
+        section[data-testid="stSidebar"] button:active,
+        section[data-testid="stSidebar"] button:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        
+        /* Inactive button (secondary) */
         section[data-testid="stSidebar"] button[kind="secondary"] {
             background-color: transparent !important;
             color: #E0E0E0 !important;
-            border-left: 3px solid transparent;
+            border-left: 3px solid transparent !important;
         }
         
         section[data-testid="stSidebar"] button[kind="secondary"]:hover {
             background-color: rgba(255, 255, 255, 0.08) !important;
             color: #FFFFFF !important;
-            border-left: 3px solid rgba(59, 130, 246, 0.5);
+            border-left: 3px solid rgba(59, 130, 246, 0.5) !important;
         }
         
+        section[data-testid="stSidebar"] button[kind="secondary"]:focus,
+        section[data-testid="stSidebar"] button[kind="secondary"]:active {
+            background-color: transparent !important;
+            color: #E0E0E0 !important;
+            border-left: 3px solid transparent !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        
+        /* Active button (primary) */
         section[data-testid="stSidebar"] button[kind="primary"] {
             background-color: rgba(59, 130, 246, 0.15) !important;
             color: #FFFFFF !important;
-            border-left: 3px solid #3b82f6;
-            font-weight: 600;
+            border-left: 3px solid #3b82f6 !important;
+            font-weight: 600 !important;
         }
         
         section[data-testid="stSidebar"] button[kind="primary"]:hover {
             background-color: rgba(59, 130, 246, 0.2) !important;
             color: #FFFFFF !important;
+            border-left: 3px solid #3b82f6 !important;
+        }
+        
+        section[data-testid="stSidebar"] button[kind="primary"]:focus,
+        section[data-testid="stSidebar"] button[kind="primary"]:active {
+            background-color: rgba(59, 130, 246, 0.15) !important;
+            color: #FFFFFF !important;
+            border-left: 3px solid #3b82f6 !important;
+            outline: none !important;
+            box-shadow: none !important;
         }
         
         /* Force all button text to be visible */

@@ -31,7 +31,7 @@ def render_dashboard_filters():
         )
     
     with col5:
-        apply_filters = st.button("Apply", type="primary", use_container_width=True)
+        apply_filters = st.button("Apply", type="primary", width="stretch")
     
     return {
         'period': period,
@@ -66,20 +66,20 @@ def render_kpi_card(kpi):
         <div class="kpi-caption">{caption_text}</div>
     </div>'''
 
-def render_kpi_grid(kpis):
-    """Render KPI cards using native Streamlit components"""
-    cols = st.columns(len(kpis))
-    
-    for i, kpi in enumerate(kpis):
-        with cols[i]:
-            # Create delta string
-            delta_str = None
-            if kpi.get('delta') is not None and kpi.get('delta') != 0:
-                delta_str = f"{kpi['delta']:.1f}%"
-            
-            # Display metric
-            st.metric(
-                label=f"{kpi.get('icon', '📊')} {kpi.get('title', 'N/A')}",
-                value=kpi.get('value', '$0'),
-                delta=delta_str
-            )
+def render_kpi_grid(kpis, use_html_cards=False):
+    """Render KPI cards. Default uses native Streamlit metrics for reliable rendering (no raw HTML)."""
+    if use_html_cards:
+        cards_html = "".join(render_kpi_card(k) for k in kpis)
+        st.markdown(f'<div class="kpi-grid">{cards_html}</div>', unsafe_allow_html=True)
+    else:
+        cols = st.columns(len(kpis))
+        for i, kpi in enumerate(kpis):
+            with cols[i]:
+                delta_str = None
+                if kpi.get('delta') is not None and kpi.get('delta') != 0:
+                    delta_str = f"{kpi['delta']:.1f}%"
+                st.metric(
+                    label=f"{kpi.get('icon', '📊')} {kpi.get('title', 'N/A')}",
+                    value=kpi.get('value', '$0'),
+                    delta=delta_str
+                )

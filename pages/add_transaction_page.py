@@ -38,7 +38,7 @@ class AddTransactionPage:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("💰 Monthly Salary", use_container_width=True, key="salary_btn"):
+                if st.button("💰 Monthly Salary", width="stretch", key="salary_btn"):
                     st.session_state.show_salary_form = not st.session_state.get('show_salary_form', False)
                 
                 # Show salary form inline
@@ -64,7 +64,7 @@ class AddTransactionPage:
                                     "Salary", payment_method, notes, "salary"
                                 )
                 
-                if st.button("🏦 Interest Income", use_container_width=True, key="interest_btn"):
+                if st.button("🏦 Interest Income", width="stretch", key="interest_btn"):
                     st.session_state.show_interest_form = not st.session_state.get('show_interest_form', False)
                 
                 # Show interest form inline
@@ -102,7 +102,7 @@ class AddTransactionPage:
                                 st.rerun()
             
             with col2:
-                if st.button("📈 BOX STOCKS ESPP", use_container_width=True, key="espp_btn"):
+                if st.button("📈 BOX STOCKS ESPP", width="stretch", key="espp_btn"):
                     st.session_state.show_espp_form = not st.session_state.get('show_espp_form', False)
                 
                 # Show ESPP form inline
@@ -138,7 +138,7 @@ class AddTransactionPage:
                                 except:
                                     st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
-                if st.button("💸 Tax Refund", use_container_width=True, key="tax_refund_btn"):
+                if st.button("💸 Tax Refund", width="stretch", key="tax_refund_btn"):
                     st.session_state.show_tax_refund_form = not st.session_state.get('show_tax_refund_form', False)
                 
                 # Show tax refund form inline
@@ -176,7 +176,7 @@ class AddTransactionPage:
                                 st.rerun()
             
             with col3:
-                if st.button("📊 BOX RSU", use_container_width=True, key="rsu_btn"):
+                if st.button("📊 BOX RSU", width="stretch", key="rsu_btn"):
                     st.session_state.show_rsu_form = not st.session_state.get('show_rsu_form', False)
                 
                 # Show RSU form inline
@@ -213,7 +213,7 @@ class AddTransactionPage:
                                     st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
                 
-                if st.button("💹 BOX ESPP PROFIT", use_container_width=True, key="espp_profit_btn"):
+                if st.button("💹 BOX ESPP PROFIT", width="stretch", key="espp_profit_btn"):
                     st.session_state.show_espp_profit_form = not st.session_state.get('show_espp_profit_form', False)
                 
                 # Show ESPP Profit form inline
@@ -255,7 +255,7 @@ class AddTransactionPage:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("🏛️ TAXES PAID", use_container_width=True, key="taxes_paid_btn"):
+                if st.button("🏛️ TAXES PAID", width="stretch", key="taxes_paid_btn"):
                     st.session_state.show_taxes_paid_form = not st.session_state.get('show_taxes_paid_form', False)
                 
                 # Show taxes paid form inline
@@ -303,7 +303,7 @@ class AddTransactionPage:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("🏠 Mortgage", use_container_width=True, key="mortgage_btn"):
+                if st.button("🏠 Mortgage", width="stretch", key="mortgage_btn"):
                     st.session_state.show_mortgage_form = not st.session_state.get('show_mortgage_form', False)
                 
                 # Show mortgage form inline
@@ -312,7 +312,7 @@ class AddTransactionPage:
                         "Mortgage Payment", 2500.0, "Expense", "Housing", "Bank Transfer", "mortgage"
                     )
                 
-                if st.button("🏢 HOA", use_container_width=True, key="hoa_btn"):
+                if st.button("🏢 HOA", width="stretch", key="hoa_btn"):
                     st.session_state.show_hoa_form = not st.session_state.get('show_hoa_form', False)
                 
                 # Show HOA form inline
@@ -350,7 +350,7 @@ class AddTransactionPage:
                                 st.rerun()
             
             with col2:
-                if st.button("🏘️ PROPERTY TAX", use_container_width=True, key="property_tax_btn"):
+                if st.button("🏘️ PROPERTY TAX", width="stretch", key="property_tax_btn"):
                     st.session_state.show_property_tax_form = not st.session_state.get('show_property_tax_form', False)
                 
                 # Show property tax form inline
@@ -359,7 +359,7 @@ class AddTransactionPage:
                         "Property Tax", 0.0, "Expense", "Housing", "Bank Transfer", "property_tax"
                     )
                 
-                if st.button("🛋️ Furniture", use_container_width=True, key="furniture_btn"):
+                if st.button("🛋️ Furniture", width="stretch", key="furniture_btn"):
                     st.session_state.show_furniture_form = not st.session_state.get('show_furniture_form', False)
                 
                 # Show furniture form inline
@@ -397,14 +397,14 @@ class AddTransactionPage:
                                 st.rerun()
             
             with col3:
-                if st.button("⚡ Utilities", use_container_width=True, key="utilities_btn"):
+                if st.button("⚡ Utilities", width="stretch", key="utilities_btn"):
                     st.session_state.show_utilities_form = not st.session_state.get('show_utilities_form', False)
                 
                 # Show utilities form inline
                 if st.session_state.get('show_utilities_form', False):
                     UtilitiesFormHandler.render_utilities_form("utilities")
                 
-                if st.button("💎 Jewelry", use_container_width=True, key="jewelry_btn"):
+                if st.button("💎 Jewelry", width="stretch", key="jewelry_btn"):
                     st.session_state.show_jewelry_form = not st.session_state.get('show_jewelry_form', False)
                 
                 # Show jewelry form inline
@@ -446,7 +446,7 @@ class AddTransactionPage:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("🚗 Car Loan", use_container_width=True, key="car_loan_btn"):
+                if st.button("🚗 Car Loan", width="stretch", key="car_loan_btn"):
                     st.session_state.show_car_loan_form = not st.session_state.get('show_car_loan_form', False)
                 
                 # Show car loan form inline
@@ -473,7 +473,7 @@ class AddTransactionPage:
                                 )
             
             with col2:
-                if st.button("🚙 Car Insurance", use_container_width=True, key="car_insurance_btn"):
+                if st.button("🚙 Car Insurance", width="stretch", key="car_insurance_btn"):
                     st.session_state.show_car_insurance_form = not st.session_state.get('show_car_insurance_form', False)
                 
                 # Show car insurance form inline
@@ -511,7 +511,7 @@ class AddTransactionPage:
                                 st.rerun()
             
             with col3:
-                if st.button("⛽ Gas", use_container_width=True, key="gas_btn"):
+                if st.button("⛽ Gas", width="stretch", key="gas_btn"):
                     st.session_state.show_gas_form = not st.session_state.get('show_gas_form', False)
                 
                 # Show gas form inline
@@ -555,7 +555,7 @@ class AddTransactionPage:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("🏦 401K Pretax", use_container_width=True, key="401k_pretax_retirement_btn"):
+                if st.button("🏦 401K Pretax", width="stretch", key="401k_pretax_retirement_btn"):
                     st.session_state.show_401k_pretax_retirement_form = not st.session_state.get('show_401k_pretax_retirement_form', False)
                 
                 # Show 401K pretax form inline
@@ -593,7 +593,7 @@ class AddTransactionPage:
                                 st.rerun()
             
             with col2:
-                if st.button("🏦 401k Roth", use_container_width=True, key="401k_roth_retirement_btn"):
+                if st.button("🏦 401k Roth", width="stretch", key="401k_roth_retirement_btn"):
                     st.session_state.show_401k_roth_retirement_form = not st.session_state.get('show_401k_roth_retirement_form', False)
                 
                 # Show 401k Roth form inline
@@ -631,7 +631,7 @@ class AddTransactionPage:
                                 st.rerun()
             
             with col3:
-                if st.button("🏥 HSA", use_container_width=True, key="hsa_retirement_btn"):
+                if st.button("🏥 HSA", width="stretch", key="hsa_retirement_btn"):
                     st.session_state.show_hsa_retirement_form = not st.session_state.get('show_hsa_retirement_form', False)
                 
                 # Show HSA form inline
@@ -673,7 +673,7 @@ class AddTransactionPage:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("💳 Credit Card", use_container_width=True, key="credit_card_payment_btn"):
+                if st.button("💳 Credit Card", width="stretch", key="credit_card_payment_btn"):
                     st.session_state.show_credit_card_payment_form = not st.session_state.get('show_credit_card_payment_form', False)
                 
                 # Show credit card payment form inline
@@ -711,7 +711,7 @@ class AddTransactionPage:
                                 st.rerun()
             
             with col2:
-                if st.button("🏠 Extra Principal", use_container_width=True, key="extra_principal_btn"):
+                if st.button("🏠 Extra Principal", width="stretch", key="extra_principal_btn"):
                     st.session_state.show_extra_principal_form = not st.session_state.get('show_extra_principal_form', False)
                 
                 # Show extra principal form inline
@@ -756,7 +756,7 @@ class AddTransactionPage:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("💰 Savings Transfer", use_container_width=True, key="savings_transfer_btn"):
+                if st.button("💰 Savings Transfer", width="stretch", key="savings_transfer_btn"):
                     st.session_state.show_savings_transfer_form = not st.session_state.get('show_savings_transfer_form', False)
                 
                 # Show savings transfer form inline
@@ -793,7 +793,7 @@ class AddTransactionPage:
                                     st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
                 
-                if st.button("📈 ROBINHOOD", use_container_width=True, key="robinhood_btn"):
+                if st.button("📈 ROBINHOOD", width="stretch", key="robinhood_btn"):
                     st.session_state.show_robinhood_form = not st.session_state.get('show_robinhood_form', False)
                 
                 # Show robinhood form inline
@@ -831,7 +831,7 @@ class AddTransactionPage:
                                 st.rerun()
             
             with col2:
-                if st.button("💸 Savings Withdraw", use_container_width=True, key="savings_withdraw_btn"):
+                if st.button("💸 Savings Withdraw", width="stretch", key="savings_withdraw_btn"):
                     st.session_state.show_savings_withdraw_form = not st.session_state.get('show_savings_withdraw_form', False)
                 
                 # Show savings withdraw form inline
@@ -868,7 +868,7 @@ class AddTransactionPage:
                                     st.session_state['flash_error'] = "❌ Failed to add transaction. Please try again."
                                 st.rerun()
                 
-                if st.button("🥇 GOLD Investment", use_container_width=True, key="gold_investment_btn"):
+                if st.button("🥇 GOLD Investment", width="stretch", key="gold_investment_btn"):
                     st.session_state.show_gold_investment_form = not st.session_state.get('show_gold_investment_form', False)
                 
                 # Show gold investment form inline
@@ -906,7 +906,7 @@ class AddTransactionPage:
                                 st.rerun()
             
             with col3:
-                if st.button("🌏 Money to India", use_container_width=True, key="money_india_btn"):
+                if st.button("🌏 Money to India", width="stretch", key="money_india_btn"):
                     st.session_state.show_money_india_form = not st.session_state.get('show_money_india_form', False)
                 
                 # Show money to India form inline
@@ -971,7 +971,7 @@ class AddTransactionPage:
                 default_index = all_payment_methods.index(default_payment) if default_payment in all_payment_methods else 0
                 payment_method = st.selectbox("Payment Method", all_payment_methods, index=default_index, help=TooltipService.get_tooltip_text('credit_card'))
             
-            if st.form_submit_button("Add Transaction", type="primary", use_container_width=True):
+            if st.form_submit_button("Add Transaction", type="primary", width="stretch"):
                 # Input validation
                 if not description.strip():
                     st.session_state['flash_error'] = "Description is required"
@@ -1048,11 +1048,11 @@ class AddTransactionPage:
                 col1, col2 = st.columns(2, gap="medium")
                 
                 with col1:
-                    if st.form_submit_button("Cancel", use_container_width=True):
+                    if st.form_submit_button("Cancel", width="stretch"):
                         st.rerun()
                 
                 with col2:
-                    if st.form_submit_button("Add Transaction", type="primary", use_container_width=True):
+                    if st.form_submit_button("Add Transaction", type="primary", width="stretch"):
                         try:
                             transaction = {
                                 'date': transaction_date.strftime('%Y-%m-%d'),
@@ -1142,11 +1142,11 @@ class AddTransactionPage:
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    if st.form_submit_button("Cancel", use_container_width=True):
+                    if st.form_submit_button("Cancel", width="stretch"):
                         st.rerun()
                 
                 with col2:
-                    if st.form_submit_button("Add Transaction", type="primary", use_container_width=True):
+                    if st.form_submit_button("Add Transaction", type="primary", width="stretch"):
                         # Add transaction directly
                         transaction = {
                             'date': transaction_date.strftime('%Y-%m-%d'),

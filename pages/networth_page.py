@@ -23,19 +23,9 @@ def _sum_key(items, key) -> float:
     items = items or []
     return sum(_to_float(it.get(key)) for it in items if isinstance(it, dict))
 
-def _fmt_money_short(n: float) -> str:
-    n = float(n)
-    if abs(n) < 1_000:
-        return f"${n:,.0f}"
-    units = ["K", "M", "B", "T"]
-    for u in units:
-        n /= 1_000.0
-        if abs(n) < 1_000:
-            # trim trailing .0
-            s = f"{n:.1f}".rstrip("0").rstrip(".")
-            return f"${s}{u}"
-    s = f"{n:.1f}".rstrip("0").rstrip(".")
-    return f"${s}T"
+def _fmt_money(n: float) -> str:
+    """Format money with exact values and commas"""
+    return f"${n:,.0f}"
 
 class NetWorthPage:
     """Net Worth page showing assets and liabilities"""
@@ -373,7 +363,7 @@ class NetWorthPage:
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
                     <div>
                         <div style="color: #64748b; font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Net Worth</div>
-                        <div style="font-size: 2.5rem; font-weight: 700; color: #1e293b; line-height: 1;">{_fmt_money_short(net_worth)}</div>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #1e293b; line-height: 1;">{_fmt_money(net_worth)}</div>
                     </div>
                     <div style="background: #dcfce7; color: #166534; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
                         ↗ {net_worth_change}
@@ -395,26 +385,41 @@ class NetWorthPage:
                     </div>
                     <div>
                         <div style="font-size: 1.1rem; font-weight: 600; color: #1e293b;">Total Assets</div>
-                        <div style="font-size: 1.8rem; font-weight: 700; color: #059669;">{_fmt_money_short(total_assets)}</div>
+                        <div style="font-size: 1.8rem; font-weight: 700; color: #059669;">{_fmt_money(total_assets)}</div>
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div style="text-align: center; padding: 1rem; background: #f1f5f9; border-radius: 12px;">
                         <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem;">CHECKING</div>
-                        <div style="font-size: 1.1rem; font-weight: 600; color: #1e293b;">{_fmt_money_short(checking_balance)}</div>
+                        <div style="font-size: 1.1rem; font-weight: 600; color: #1e293b;">{_fmt_money(checking_balance)}</div>
                     </div>
                     <div style="text-align: center; padding: 1rem; background: #f1f5f9; border-radius: 12px;">
                         <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem;">RETIREMENT</div>
-                        <div style="font-size: 1.1rem; font-weight: 600; color: #1e293b;">{_fmt_money_short(retirement_value)}</div>
+                        <div style="font-size: 1.1rem; font-weight: 600; color: #1e293b;">{_fmt_money(retirement_value)}</div>
                     </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
         
         with col2:
-            debt_ratio = (total_debts / total_assets * 100) if total_assets > 0 else 0
-            debt_status = "Excellent" if debt_ratio < 30 else "Good" if debt_ratio < 50 else "High"
-            debt_color = "#059669" if debt_ratio < 30 else "#d97706" if debt_ratio < 50 else "#dc2626"
+            # Fix debt ratio calculation: should be based on income, not assets
+            # Debt-to-Income ratio is the standard metric
+            from services.financial_data_service import TransactionService
+            transactions = TransactionService.load_transactions()
+            
+            # Calculate monthly income
+            from datetime import datetime
+            current_month = datetime.now().strftime('%Y-%m')
+            monthly_income = sum(
+                float(t.get('amount', 0)) 
+                for t in transactions 
+                if t.get('date', '').startswith(current_month) and t.get('type', '').lower() == 'income'
+            )
+            
+            # Calculate debt-to-income ratio (standard financial metric)
+            debt_ratio = (total_debts / monthly_income * 100) if monthly_income > 0 else 0
+            debt_status = "Excellent" if debt_ratio < 36 else "Good" if debt_ratio < 43 else "High"
+            debt_color = "#059669" if debt_ratio < 36 else "#d97706" if debt_ratio < 43 else "#dc2626"
             
             st.markdown(f"""
             <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 2rem; border-radius: 16px; box-shadow: 0 4px 25px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; margin-bottom: 1.5rem;">
@@ -430,7 +435,7 @@ class NetWorthPage:
                 <div style="height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden;">
                     <div style="height: 100%; background: linear-gradient(90deg, {debt_color} 0%, {debt_color}aa 100%); width: {min(debt_ratio, 100)}%; border-radius: 2px;"></div>
                 </div>
-                <div style="margin-top: 1rem; color: #64748b; font-size: 0.8rem;">💡 Keep below 30% for optimal health</div>
+                <div style="margin-top: 1rem; color: #64748b; font-size: 0.8rem;">💡 Keep below 36% for optimal health (DTI ratio)</div>
             </div>
             """, unsafe_allow_html=True)
             
@@ -443,13 +448,13 @@ class NetWorthPage:
                     </div>
                     <div>
                         <div style="font-size: 1.1rem; font-weight: 600; color: #1e293b;">Total Liabilities</div>
-                        <div style="font-size: 1.8rem; font-weight: 700; color: #dc2626;">{_fmt_money_short(total_debts)}</div>
+                        <div style="font-size: 1.8rem; font-weight: 700; color: #dc2626;">{_fmt_money(total_debts)}</div>
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div style="text-align: center; padding: 1rem; background: #fef2f2; border-radius: 12px;">
                         <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem;">CREDIT CARDS</div>
-                        <div style="font-size: 1.1rem; font-weight: 600; color: #1e293b;">{_fmt_money_short(credit_debt)}</div>
+                        <div style="font-size: 1.1rem; font-weight: 600; color: #1e293b;">{_fmt_money(credit_debt)}</div>
                     </div>
                     <div style="text-align: center; padding: 1rem; background: #fef2f2; border-radius: 12px;">
                         <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem;">OTHER DEBT</div>
@@ -494,7 +499,7 @@ class NetWorthPage:
                 title='Asset Distribution',
                 hole=0.4
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("📊 Asset distribution chart will appear when you add account balances.")
         
@@ -553,14 +558,14 @@ class NetWorthPage:
                     "owner": "Owner"
                 },
                 hide_index=True,
-                use_container_width=True
+                width="stretch"
             )
             
             # Show by owner
             st.subheader("Investments by Owner")
             owner_data = stocks_df.groupby('owner')['value'].sum().reset_index()
             fig = px.bar(owner_data, x='owner', y='value', title='Investment Value by Owner')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.info("No investment accounts found.")
     
@@ -577,7 +582,7 @@ class NetWorthPage:
                     "owner": "Owner"
                 },
                 hide_index=True,
-                use_container_width=True
+                width="stretch"
             )
         else:
             st.info("No savings accounts found.")
@@ -594,7 +599,7 @@ class NetWorthPage:
                     "owner": "Owner"
                 },
                 hide_index=True,
-                use_container_width=True
+                width="stretch"
             )
     
     @staticmethod
@@ -613,7 +618,7 @@ class NetWorthPage:
                         "owner": "Owner"
                     },
                     hide_index=True,
-                    use_container_width=True
+                    width="stretch"
                 )
             else:
                 st.info("No retirement accounts found.")
@@ -630,7 +635,7 @@ class NetWorthPage:
                         "owner": "Owner"
                     },
                     hide_index=True,
-                    use_container_width=True
+                    width="stretch"
                 )
             else:
                 st.info("No HSA accounts found.")
@@ -649,7 +654,7 @@ class NetWorthPage:
                     "owner": "Owner"
                 },
                 hide_index=True,
-                use_container_width=True
+                width="stretch"
             )
             
             # Calculate equity
@@ -677,47 +682,60 @@ class NetWorthPage:
     def _show_debts_tab(debts):
         st.subheader("Debts & Liabilities")
         
-        # Auto loans
-        if debts.get('loans'):
-            st.subheader("Auto Loans")
-            loans_df = pd.DataFrame(debts['loans'])
-            st.dataframe(
-                loans_df,
-                column_config={
-                    "name": "Loan",
-                    "value": st.column_config.NumberColumn("Balance ($)", format="$%d"),
-                    "owner": "Owner"
-                },
-                hide_index=True,
-                use_container_width=True
-            )
+        # Calculate debts from transactions
+        from services.financial_data_service import TransactionService
+        transactions = TransactionService.load_transactions()
         
-        # Credit cards
-        if debts.get('credit_cards'):
-            st.subheader("Credit Cards")
-            cc_df = pd.DataFrame(debts['credit_cards'])
-            st.dataframe(
-                cc_df,
-                column_config={
-                    "name": "Card",
-                    "value": st.column_config.NumberColumn("Balance ($)", format="$%d"),
-                    "owner": "Owner"
-                },
-                hide_index=True,
-                use_container_width=True
-            )
+        credit_card_debt = 0
+        loan_debt = 0
+        mortgage_debt = 0
         
-        # Mortgage
-        if debts.get('mortgage'):
-            st.subheader("Mortgage")
-            mortgage_df = pd.DataFrame(debts['mortgage'])
-            st.dataframe(
-                mortgage_df,
-                column_config={
-                    "name": "Mortgage",
-                    "value": st.column_config.NumberColumn("Balance ($)", format="$%d"),
-                    "owner": "Owner"
-                },
-                hide_index=True,
-                use_container_width=True
-            )
+        for txn in transactions:
+            amount = _to_float(txn.get('amount', 0))
+            txn_type = txn.get('type', '').lower()
+            category = txn.get('category', '').lower()
+            
+            if txn_type == 'expense':
+                if category == 'credit card':
+                    credit_card_debt += amount
+                elif 'loan' in category or 'auto' in category:
+                    loan_debt += amount
+                elif 'mortgage' in category or 'rent' in category:
+                    mortgage_debt += amount
+        
+        # Display calculated debts
+        if credit_card_debt > 0 or loan_debt > 0 or mortgage_debt > 0:
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("💳 Credit Card Debt", f"${credit_card_debt:,.2f}")
+            with col2:
+                st.metric("🚗 Loan Debt", f"${loan_debt:,.2f}")
+            with col3:
+                st.metric("🏠 Mortgage/Rent", f"${mortgage_debt:,.2f}")
+            
+            # Show breakdown
+            st.markdown("---")
+            st.subheader("Debt Breakdown")
+            
+            debt_data = []
+            if credit_card_debt > 0:
+                debt_data.append({'Type': 'Credit Cards', 'Balance': credit_card_debt})
+            if loan_debt > 0:
+                debt_data.append({'Type': 'Loans', 'Balance': loan_debt})
+            if mortgage_debt > 0:
+                debt_data.append({'Type': 'Mortgage/Rent', 'Balance': mortgage_debt})
+            
+            if debt_data:
+                debt_df = pd.DataFrame(debt_data)
+                st.dataframe(
+                    debt_df,
+                    column_config={
+                        "Type": "Debt Type",
+                        "Balance": st.column_config.NumberColumn("Balance ($)", format="$%.2f")
+                    },
+                    hide_index=True,
+                    width="stretch"
+                )
+        else:
+            st.info("💚 No debts found! You're debt-free based on your transactions.")

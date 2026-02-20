@@ -19,7 +19,7 @@ class DashboardCharts:
         
         cash_flow_data = DashboardCharts._get_cash_flow_data()
         fig = DashboardCharts._create_cash_flow_chart(cash_flow_data)
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig, width="stretch", config={'displayModeBar': False})
         st.markdown("</div>", unsafe_allow_html=True)
     
     @staticmethod
@@ -30,7 +30,7 @@ class DashboardCharts:
         
         category_data = DashboardCharts._get_category_data()
         fig = DashboardCharts._create_category_chart(category_data)
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig, width="stretch", config={'displayModeBar': False})
         st.markdown("</div>", unsafe_allow_html=True)
     
     @staticmethod
@@ -41,7 +41,7 @@ class DashboardCharts:
         
         budget_data = DashboardCharts._get_budget_data()
         fig = DashboardCharts._create_budget_chart(budget_data)
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        st.plotly_chart(fig, width="stretch", config={'displayModeBar': False})
         st.markdown("</div>", unsafe_allow_html=True)
     
     @staticmethod
@@ -334,5 +334,5 @@ class DashboardCharts:
                 "amount": st.column_config.NumberColumn("Amount", format="$%.2f"),
                 "type": st.column_config.TextColumn("Type")
             },
-            hide_index=True, use_container_width=True
+            hide_index=True, width="stretch"
         )

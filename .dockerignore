@@ -1,0 +1,36 @@
+# Git and env
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__
+*.py[cod]
+*.pyo
+.venv
+venv
+env
+.pytest_cache
+.coverage
+htmlcov
+
+# Local data and logs (don’t bake into image)
+*.db
+logs/
+*.log
+
+# IDE and OS
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Docs and dev (optional: remove if you want these in the image)
+README.md
+HOSTING.md
+*.md
+!DYNAMIC_TEMPLATES.md
+tests/
+requirements-dev.txt

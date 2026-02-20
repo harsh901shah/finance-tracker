@@ -129,7 +129,7 @@ class DashboardFilters:
         # Set default index
         default_idx = default_month - 1  # Convert to 0-based index
         
-        # Initialize session state for filters if not exists
+        # Initialize session state for filters if not exists (persist applied values)
         current_label = datetime(current_year, current_month, 1).strftime('%B %Y')
         if 'filter_period' not in st.session_state:
             st.session_state.filter_period = current_label
@@ -140,6 +140,11 @@ class DashboardFilters:
         if 'filter_payment' not in st.session_state:
             st.session_state.filter_payment = []
         
+        # Resolve period index from session state (so Apply persists selection)
+        period_idx = default_idx
+        if st.session_state.filter_period in month_options:
+            period_idx = month_options.index(st.session_state.filter_period)
+        
         # Filters in single row
         col1, col2, col3, col4, col5 = st.columns([2, 2, 2, 2, 1])
         
@@ -147,7 +152,8 @@ class DashboardFilters:
             selected_period = st.selectbox(
                 "Period",
                 month_options,
-                index=default_idx,
+                index=period_idx,
+                key="dashboard_period",
                 help=help_text
             )
         
@@ -155,10 +161,10 @@ class DashboardFilters:
             transaction_types = st.multiselect(
                 "Transaction Type",
                 options=["Income", "Expense", "Investment", "Transfer"],
-                default=["Income", "Expense"],
+                default=st.session_state.filter_txn_types,
+                key="dashboard_txn_types",
                 help="Select transaction types to include"
             )
-            # Show current selection if empty
             if not transaction_types:
                 st.caption("⚠️ No types selected - showing zeros")
         
@@ -166,10 +172,14 @@ class DashboardFilters:
             all_categories = ["All Categories", "Salary", "Investment", "Tax", "Retirement", "Healthcare", 
                             "Housing", "Transportation", "Utilities", "Shopping", "Credit Card", 
                             "Savings", "Transfer", "Food", "Entertainment", "Other"]
+            cat_idx = 0
+            if st.session_state.filter_category in all_categories:
+                cat_idx = all_categories.index(st.session_state.filter_category)
             selected_categories = st.selectbox(
                 "Category", 
                 options=all_categories, 
-                index=0,
+                index=cat_idx,
+                key="dashboard_category",
                 help="Select category to filter by"
             )
         
@@ -177,24 +187,31 @@ class DashboardFilters:
             payment_methods = st.multiselect(
                 "Payment Method",
                 options=["Bank Transfer", "Credit Card", "Cash", "Check", "Direct Deposit", "Other"],
-                default=[],
+                default=st.session_state.filter_payment,
+                key="dashboard_payment",
                 help="Select payment methods to include",
                 placeholder="All methods"
             )
         
         with col5:
-            apply_filter = st.button("Apply", type="primary", use_container_width=True)
+            apply_filter = st.button("Apply", type="primary", width="stretch", key="dashboard_apply")
+        
+        # On Apply: persist to session state and rerun so user sees "Filters applied" and data refreshes
+        if apply_filter:
+            st.session_state.filter_period = selected_period
+            st.session_state.filter_txn_types = transaction_types
+            st.session_state.filter_category = selected_categories
+            st.session_state.filter_payment = payment_methods
+            st.session_state.dashboard_filters_applied = True
+            st.rerun()
         
         date_range = None
-        
-        # Process filters
         date_filter = DashboardFilters._process_date_filter(selected_period, date_range, apply_filter)
         filters = {
-            'transaction_types': transaction_types,  # Keep empty list if nothing selected
+            'transaction_types': transaction_types,
             'categories': [selected_categories] if selected_categories != "All Categories" else [],
             'payment_methods': payment_methods
         }
-        
         return date_filter, filters, apply_filter
     
     @staticmethod
