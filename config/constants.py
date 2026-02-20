@@ -1,10 +1,11 @@
 """
 Centralized constants and enumerations for the application
 """
+import os
 
 class DatabaseConstants:
-    """Database configuration constants"""
-    DB_FILE = 'finance_tracker.db'
+    """Database configuration constants. DB path can be overridden via FINANCE_TRACKER_DB_PATH for hosting."""
+    DB_FILE = os.environ.get('FINANCE_TRACKER_DB_PATH', 'finance_tracker.db')
     TEST_DB_PREFIX = 'test_'
 
 class TransactionTypes:

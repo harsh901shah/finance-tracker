@@ -279,7 +279,7 @@ class TransactionPage:
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("🗑️ Delete Selected", use_container_width=True, type="secondary"):
+                    if st.button("🗑️ Delete Selected", width="stretch", type="secondary"):
                         if st.session_state.get('confirm_bulk_delete'):
                             deleted_count = TransactionPage._bulk_delete_transactions(selected_transactions, user_id, display_df)
                             if deleted_count > 0:
@@ -293,7 +293,7 @@ class TransactionPage:
                             st.warning(f"Click again to confirm deletion of {len(selected_transactions)} transactions")
                 
                 with col2:
-                    if st.button("📊 Export Selected", use_container_width=True):
+                    if st.button("📊 Export Selected", width="stretch"):
                         selected_df = display_df[display_df['id'].isin(selected_transactions)]
                         csv = selected_df.to_csv(index=False)
                         st.download_button(
@@ -307,7 +307,7 @@ class TransactionPage:
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("📊 Export All", use_container_width=True):
+                if st.button("📊 Export All", width="stretch"):
                     csv = display_df.to_csv(index=False)
                     st.download_button(
                         label="Download All CSV",
@@ -317,11 +317,11 @@ class TransactionPage:
                     )
             
             with col2:
-                if st.button("📈 View Summary", use_container_width=True):
+                if st.button("📈 View Summary", width="stretch"):
                     TransactionPage._show_transaction_summary(filtered_df)
             
             with col3:
-                if st.button("🔍 Advanced Filters", use_container_width=True):
+                if st.button("🔍 Advanced Filters", width="stretch"):
                     st.info("Use the filters above to narrow down transactions")
             
             # Check for additional data columns

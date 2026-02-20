@@ -108,7 +108,8 @@ class AuthService:
                 full_name TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 last_login TEXT,
-                is_active INTEGER DEFAULT 1
+                is_active INTEGER DEFAULT 1,
+                terms_accepted_at TEXT
             )
             ''')
             

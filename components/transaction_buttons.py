@@ -70,7 +70,7 @@ class TransactionButtons:
             
             with col3:
                 # Special utilities button with smart form
-                if st.button("⚡ Utilities", use_container_width=True, key="utilities_btn"):
+                if st.button("⚡ Utilities", width="stretch", key="utilities_btn"):
                     st.session_state.show_utilities_form = True
                 
                 if st.session_state.get('show_utilities_form', False):
@@ -142,7 +142,7 @@ class TransactionButtons:
     def _render_button_with_form(button_text, form_key, description, default_amount, 
                                 transaction_type, category, default_payment_method):
         """Render button with associated inline form"""
-        if st.button(button_text, use_container_width=True, key=f"{form_key}_btn"):
+        if st.button(button_text, width="stretch", key=f"{form_key}_btn"):
             st.session_state[f"show_{form_key}_form"] = True
         
         if st.session_state.get(f'show_{form_key}_form', False):

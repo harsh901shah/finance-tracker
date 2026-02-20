@@ -14,163 +14,126 @@ class DashboardPage:
     @classmethod
     def show(cls):
         """Display the dashboard page"""
-        # Clear cache to ensure fresh data
-        TransactionService.clear_cache()
-        
-        # Apply world-class CSS
+        # Apply world-class CSS and shared dashboard styles
         cls._apply_world_class_css()
+        cls._inject_dashboard_css()
         
         # Page header
         st.markdown("<h1 class='page-title'>Dashboard</h1>", unsafe_allow_html=True)
         st.markdown("<p class='page-subtitle'>Your financial overview</p>", unsafe_allow_html=True)
         
-        # Compact filter bar
+        # Compact filter bar (hidden with CSS)
         date_filter, filters, apply_filter = cls._render_compact_filter_bar()
         
-        # Force cache clear for live updates
-        TransactionService.clear_cache()
+        # "Filters applied" feedback (clear after showing once)
+        if st.session_state.get('dashboard_filters_applied'):
+            st.success("Filters applied. Dashboard updated.")
+            del st.session_state['dashboard_filters_applied']
         
-        # Get transactions data (force refresh)
-        transactions = cls._get_transactions_data()
-        
-        # Always use the date filter from selected period
         effective_date_filter = date_filter
         effective_filters = filters
-        
-        # If no date filter returned, use default January 2025
         if not effective_date_filter:
             from datetime import date
             current_date = date(2025, 1, 1)
             end_date = date(2025, 1, 31)
             effective_date_filter = (current_date, end_date)
-        
-        # Ensure we have transaction types filter
         if not effective_filters or not effective_filters.get('transaction_types'):
             effective_filters = {'transaction_types': ['Income', 'Expense'], 'categories': [], 'payment_methods': []}
         
-        # Load data with effective filters
-        current_month_data = cls._get_filtered_data(effective_date_filter, effective_filters)
+        # Single cache clear before loading data
+        TransactionService.clear_cache()
         
-        # Get trend data for comparison
-        trends = cls._calculate_trends(effective_date_filter, effective_filters)
+        with st.spinner("Updating dashboard…"):
+            transactions = cls._get_transactions_data()
+            current_month_data = cls._get_filtered_data(effective_date_filter, effective_filters)
+            trends = cls._calculate_trends(effective_date_filter, effective_filters)
+            analytics = cls._get_additional_analytics(effective_date_filter, effective_filters) if AppConfig.FEATURES.get('advanced_analytics', True) else {}
         
-        # Get additional analytics
-        analytics = cls._get_additional_analytics(effective_date_filter, effective_filters) if AppConfig.FEATURES.get('advanced_analytics', True) else {}
-        
-        # World-class KPI grid
+        # KPI cards (HTML, Monarch-style)
         from components.dashboard_filters import render_kpi_grid
-        
-        # Calculate all KPI values using proper savings formula
-        # Your savings formula: (Taxes + Interest + 401K + HSA + Investments - Spending) / Total Income
         savings_data = cls._calculate_proper_savings_rate(effective_date_filter, effective_filters)
         net_income = current_month_data['income'] - current_month_data['expenses']
         savings_rate = savings_data['savings_rate']
-        
         income_trend = trends.get('income_trend', 0)
         expense_trend = trends.get('expense_trend', 0)
         net_trend = trends.get('net_trend', 0)
         savings_trend = trends.get('savings_trend', 0)
-        
         has_trend_data = len(trends) > 0
-        
-        # KPI data array
         kpis = [
-            {
-                'icon': '💰',
-                'title': 'Income',
-                'value': f"${current_month_data['income']:,.0f}",
-                'delta': income_trend if has_trend_data else None,
-                'delta_type': 'positive' if income_trend >= 0 else 'negative' if has_trend_data else 'neutral'
-            },
-            {
-                'icon': '💸',
-                'title': 'Expenses', 
-                'value': f"${current_month_data['expenses']:,.0f}",
-                'delta': expense_trend if has_trend_data else None,
-                'delta_type': 'negative' if expense_trend > 0 else 'positive' if has_trend_data else 'neutral'
-            },
-            {
-                'icon': '📈',
-                'title': 'Net Income',
-                'value': f"${net_income:,.0f}",
-                'delta': net_trend if has_trend_data else None,
-                'delta_type': 'positive' if net_income >= 0 else 'negative' if has_trend_data else 'neutral'
-            },
-            {
-                'icon': '🎯',
-                'title': 'Savings Rate',
-                'value': f"{savings_rate:.1f}%",
-                'delta': savings_trend if has_trend_data else None,
-                'delta_type': 'positive' if savings_trend >= 0 else 'negative' if has_trend_data else 'neutral'
-            }
+            {'icon': '💰', 'title': 'Income', 'value': f"${current_month_data['income']:,.0f}",
+             'delta': income_trend if has_trend_data else None, 'delta_type': 'positive' if income_trend >= 0 else 'negative' if has_trend_data else 'neutral'},
+            {'icon': '💸', 'title': 'Expenses', 'value': f"${current_month_data['expenses']:,.0f}",
+             'delta': expense_trend if has_trend_data else None, 'delta_type': 'negative' if expense_trend > 0 else 'positive' if has_trend_data else 'neutral'},
+            {'icon': '📈', 'title': 'Net Income', 'value': f"${net_income:,.0f}",
+             'delta': net_trend if has_trend_data else None, 'delta_type': 'positive' if net_income >= 0 else 'negative' if has_trend_data else 'neutral'},
+            {'icon': '🎯', 'title': 'Savings Rate', 'value': f"{savings_rate:.1f}%",
+             'delta': savings_trend if has_trend_data else None, 'delta_type': 'positive' if savings_trend >= 0 else 'negative' if has_trend_data else 'neutral'}
         ]
+        # Use native Streamlit metrics (reliable); HTML KPI cards can be escaped in some Streamlit builds
+        render_kpi_grid(kpis, use_html_cards=False)
         
-        render_kpi_grid(kpis)
-        
-        # Cash flow chart
-        st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+        # Cash flow chart (card)
+        st.markdown("<div class='chart-container section-card'>", unsafe_allow_html=True)
         st.markdown("<h2>Cash Flow</h2>", unsafe_allow_html=True)
-        
-        # Get real cash flow data with timeline view (6 months default)
         cash_flow_data = cls._get_real_cash_flow_data(effective_date_filter, months_to_show=6)
-        
-        # Create modern timeline cash flow chart
         fig = cls._create_cash_flow_chart(cash_flow_data, months_to_show=6)
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False, 'responsive': True})
+        st.plotly_chart(fig, width="stretch", config={'displayModeBar': False, 'responsive': True})
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # Two-column section with robust data handling
-        col1, col2 = st.columns(2)
-        
-        # Get and normalize transaction data with effective period filter
+        # Two-column section: Spending by Category & Budget Progress (collapsible)
         tx_data = cls._get_normalized_transactions(transactions, effective_date_filter)
         
+        col1, col2 = st.columns(2)
         with col1:
-            st.markdown("### Spending by Category")
-            st.caption("Selected month breakdown")
-            
-            if tx_data['total_spent'] <= 0:
-                st.info("No spending in the selected month.")
-            else:
-                # Show total
-                st.metric("Total Spent", f"${tx_data['total_spent']:,.0f}")
-                
-                # Show top categories
-                for cat, amt in tx_data['top_categories']:
-                    pct = amt/tx_data['total_spent']*100
-                    st.write(f"**{cat}**: ${amt:,.0f} ({pct:.1f}%)")
-        
+            with st.expander("**Spending by Category**", expanded=True):
+                st.caption("Selected month breakdown")
+                if tx_data['total_spent'] <= 0:
+                    st.info("No spending in the selected month.")
+                else:
+                    st.metric("Total Spent", f"${tx_data['total_spent']:,.0f}")
+                    for cat, amt in tx_data['top_categories']:
+                        pct = amt / tx_data['total_spent'] * 100
+                        st.write(f"**{cat}**: ${amt:,.0f} ({pct:.1f}%)")
         with col2:
-            st.markdown("### Budget Progress")
-            st.caption("Monthly budget tracking")
-            
-            budget_data = cls._get_budget_progress(tx_data['spending_by_category'], effective_date_filter)
-            
-            if not budget_data:
-                st.info("No budgets set or no spending this month.")
-            else:
-                for item in budget_data:
-                    color = "🟢" if item['pct'] <= 100 else "🔴"
-                    st.write(f"{color} **{item['category']}**: ${item['spent']:,.0f} / ${item['budget']:,.0f} ({item['pct']:.1f}%)")
-                    st.progress(min(item['pct']/100, 1.0))
-
+            with st.expander("**Budget Progress**", expanded=True):
+                st.caption("Monthly budget tracking")
+                budget_data = cls._get_budget_progress(tx_data['spending_by_category'], effective_date_filter)
+                if not budget_data:
+                    st.info("No budgets set or no spending this month.")
+                else:
+                    for item in budget_data:
+                        color = "🟢" if item['pct'] <= 100 else "🔴"
+                        st.write(f"{color} **{item['category']}**: ${item['spent']:,.0f} / ${item['budget']:,.0f} ({item['pct']:.1f}%)")
+                        st.progress(min(item['pct'] / 100, 1.0))
         
-        # Recent transactions
-        st.markdown("<div class='transactions-container'>", unsafe_allow_html=True)
-        st.markdown("<h2>Recent Transactions</h2>", unsafe_allow_html=True)
+        # Recent transactions with CTAs (Monarch-style: Add transaction, View all)
+        st.markdown("<div class='transactions-container section-card'>", unsafe_allow_html=True)
+        header_col1, header_col2 = st.columns([3, 1])
+        with header_col1:
+            st.markdown("<h2>Recent Transactions</h2>", unsafe_allow_html=True)
+        with header_col2:
+            cta_col1, cta_col2 = st.columns(2)
+            with cta_col1:
+                if st.button("➕ Add transaction", key="dashboard_cta_add", width="stretch", type="primary"):
+                    st.session_state.ft_current_page = "Add Transaction"
+                    st.rerun()
+            with cta_col2:
+                if st.button("View all", key="dashboard_cta_view_all", width="stretch"):
+                    st.session_state.ft_current_page = "View Transactions"
+                    st.rerun()
         
-        # Get real recent transactions data with effective period filter
         transactions_data = cls._get_real_recent_transactions(effective_date_filter)
-        
-        # Display transactions table
         cls._display_transactions_table(transactions_data)
         st.markdown("</div>", unsafe_allow_html=True)
     
     @staticmethod
     def _render_compact_filter_bar():
-        """Render compact single-row filter bar"""
+        """Render compact single-row filter bar (hidden with CSS)"""
+        # Wrap in a container that we can hide with CSS
+        st.markdown('<div class="filter-bar-hidden">', unsafe_allow_html=True)
         # Get filter controls once to avoid duplicate IDs
         date_filter, filters, apply_filter = DashboardFilters.render_filter_controls()
+        st.markdown('</div>', unsafe_allow_html=True)
         return date_filter, filters, apply_filter
     
 
@@ -432,28 +395,22 @@ class DashboardPage:
         try:
             transactions = TransactionService.load_transactions()
             
-            # Show from January to current month
-            end_date = datetime.now()
-            start_date = datetime(end_date.year, 1, 1)  # January 1st of current year
+            # Show all 12 months of current year
+            current_year = datetime.now().year
             
-            # Initialize all months from Jan to current month with zeros
+            # Initialize all 12 months with zeros
             monthly_data = {}
-            current_date = start_date
-            while current_date <= end_date:
-                month_key = current_date.strftime('%Y-%m')
-                month_name = current_date.strftime('%b')
+            for month_num in range(1, 13):
+                month_date = datetime(current_year, month_num, 1)
+                month_key = month_date.strftime('%Y-%m')
+                month_name = month_date.strftime('%b')
                 monthly_data[month_key] = {
                     'month_name': month_name,
                     'income': 0,
                     'expenses': 0
                 }
-                # Move to next month
-                if current_date.month == 12:
-                    current_date = current_date.replace(year=current_date.year + 1, month=1)
-                else:
-                    current_date = current_date.replace(month=current_date.month + 1)
             
-            # Process transactions (unchanged logic)
+            # Process transactions
             for transaction in transactions:
                 try:
                     transaction_date = datetime.strptime(transaction.get('date', ''), '%Y-%m-%d')
@@ -566,25 +523,13 @@ class DashboardPage:
         # Net line (blue) - uses same categorical labels for center alignment
         fig.add_trace(go.Scatter(
             name="Net",
-            x=months,  # Same categorical labels as bars
+            x=months,
             y=net_values,
             mode="lines+markers",
             line=dict(color="#2563eb", width=3),
             marker=dict(size=8, color="#2563eb"),
             hovertemplate="%{x}<br>Net: $%{y:,.0f}<extra></extra>"
         ))
-        
-        # Annotations for no income months
-        for month, net_y, income, deficit in zip(months, net_values, incomes, deficits):
-            if income == 0 and deficit > 0:
-                fig.add_annotation(
-                    x=month,
-                    y=0,
-                    text="No income recorded",
-                    showarrow=False,
-                    yshift=15,
-                    font=dict(size=10, color="#64748b")
-                )
         
         # Professional layout (Credit Karma style)
         fig.update_layout(
@@ -608,7 +553,7 @@ class DashboardPage:
         fig.update_yaxes(
             rangemode="tozero",
             range=[0, y_max],
-            tickformat="$~s",  # Compact currency format ($1k, $2k, etc.)
+            tickformat="$~s",
             showgrid=True,
             gridcolor="#f3f4f6",
             gridwidth=1,
@@ -625,10 +570,6 @@ class DashboardPage:
             linecolor="#d1d5db",
             tickangle=0
         )
-        
-        # Bars styled directly in traces above
-        
-        # Config will be passed to st.plotly_chart() instead
         
         return fig
     
@@ -859,9 +800,9 @@ class DashboardPage:
             with col2:
                 btn_col1, btn_col2 = st.columns(2)
                 with btn_col1:
-                    st.button("Add Expense", type="primary", use_container_width=True)
+                    st.button("Add Expense", type="primary", width="stretch")
                 with btn_col2:
-                    st.button("Import CSV", use_container_width=True)
+                    st.button("Import CSV", width="stretch")
             
             # Tips as markdown
             st.markdown("""
@@ -911,7 +852,7 @@ class DashboardPage:
             )])
             fig.update_layout(height=250, margin=dict(l=0,r=0,t=0,b=0), showlegend=False)
             fig.add_annotation(text=f"${total_spent:,.0f}", x=0.5, y=0.5, font_size=20, showarrow=False)
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig, width="stretch", config={'displayModeBar': False})
             
             # Only show top categories bar if more than one category
             if len(category_spending) > 1:
@@ -933,7 +874,7 @@ class DashboardPage:
                     xaxis=dict(showgrid=False, showticklabels=False),
                     yaxis=dict(showgrid=False)
                 )
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                st.plotly_chart(fig, width="stretch", config={'displayModeBar': False})
     
     @staticmethod
     def _get_real_category_data():
@@ -1248,7 +1189,7 @@ class DashboardPage:
                     "type": st.column_config.TextColumn("Type")
                 },
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
                 height=height
             )
     
@@ -1418,5 +1359,52 @@ class DashboardPage:
         .stDateInput > div > div {
             height: 40px;
         }
+        
+        /* Section cards (chart, transactions) */
+        .section-card {
+            background: var(--surface-primary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        /* Hide filter bar white box */
+        .filter-bar-hidden {
+            display: none !important;
+        }
+        
+        /* Hide white boxes from column containers */
+        div[data-testid="stHorizontalBlock"] {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+        
+        div[data-testid="stHorizontalBlock"] > div {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
         </style>
         """, unsafe_allow_html=True)
+    
+    @staticmethod
+    def _inject_dashboard_css():
+        """Load shared dashboard CSS from styles/dashboard.css for consistent filter and card styling."""
+        import os
+        css_paths = [
+            os.path.join(os.path.dirname(__file__), '..', 'styles', 'dashboard.css'),
+            'styles/dashboard.css',
+        ]
+        for path in css_paths:
+            if os.path.isfile(path):
+                try:
+                    with open(path, 'r') as f:
+                        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+                except Exception:
+                    pass
+                break

@@ -58,16 +58,28 @@ class BudgetPage:
             # Period selector
             current_date = datetime.now()
             month_options = []
-            for i in range(-6, 7):  # 6 months back to 6 months forward
-                month_date = current_date.replace(day=1) + timedelta(days=32*i)
-                month_date = month_date.replace(day=1)
-                month_options.append((month_date.strftime('%B %Y'), month_date.strftime('%m'), month_date.year))
+            
+            # Only show months from current year (2026) onwards
+            current_year = current_date.year
+            
+            # Generate all 12 months for current year
+            for month_num in range(1, 13):
+                month_date = datetime(current_year, month_num, 1)
+                month_options.append((month_date.strftime('%B %Y'), f"{month_num:02d}", current_year))
+            
+            # Add next year's months
+            for month_num in range(1, 13):
+                month_date = datetime(current_year + 1, month_num, 1)
+                month_options.append((month_date.strftime('%B %Y'), f"{month_num:02d}", current_year + 1))
+            
+            # Find current month index
+            current_month_index = current_date.month - 1  # 0-indexed
             
             selected_period = st.selectbox(
                 "Budget Period",
                 options=range(len(month_options)),
                 format_func=lambda i: month_options[i][0],
-                index=6  # Current month
+                index=current_month_index  # Current month
             )
             
             selected_month = month_options[selected_period][1]
@@ -134,7 +146,7 @@ class BudgetPage:
                         help=f"Set your monthly budget for {category.lower()}"
                     )
                 
-                submitted = st.form_submit_button("💾 Save Budget", use_container_width=True, type="primary")
+                submitted = st.form_submit_button("💾 Save Budget", width="stretch", type="primary")
                 if submitted:
                     try:
                         # Validate inputs
